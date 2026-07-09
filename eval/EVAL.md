@@ -1,61 +1,45 @@
-# hqmtp before/after eval — NVFP4 (st-ct) MTP head retrain
+# hqmtp before/after eval — teacher-forced replay only (protocol v2, locked 2026-07-09)
 
-Judges task #10: retrain the `mtp.*` head against the quantized base's own distribution,
-prove live-acceptance recovery. "Before" = shipped bf16 head (loader-law Q8_0 in-engine).
-"After" = retrained head patched into the same checkpoint.
+Judges task #10: retrain the 9B `mtp.*` head against the quantized base, prove recovery.
+Metric = **teacher-forced replay only** (deterministic, loop-immune, arm-comparable).
+Live serve sessions are PARKED until the engine ships sampled spec decode; the serve rig
+(`serve/chat_proxy.py` + bw24-server) stays ready.
 
-## Arms and artifacts
+## Arms
 
-- Base (fixed, both runs): `qwen35-9b-nvfp4-st-ct` on bw24-g7e, bw24 `run-spec`/`replay-acceptance`.
-- BEFORE: checkpoint as-is.
-- AFTER: copy of the checkpoint with retrained `mtp.*` tensors patched in
-  (`eval/patch_head.py`), everything else byte-identical.
-- Reference ceiling: `qwen35-9b-hf` bf16 numbers (already measured).
+- Base fixed: `qwen35-9b-nvfp4-st-ct` (compressed-tensors NVFP4, bf16 mtp.* head).
+- BEFORE = shipped head. AFTER = retrained head via `patch_head.py` (head-only diff).
+- Ceiling reference: `qwen35-9b-hf` bf16 full-prec.
 
-## Contamination rule (hard)
+## Corpora (two, no more)
 
-Training data = captured corpus (`results/g7e/corpus/`: p1–p6 payloads, agent-loop
-transcripts, generated continuations) and anything else EXCEPT the eval set below.
-The eval prompts/corpora live in `eval/prompts/` + `eval/corpora/` and MUST NEVER enter
-training. p1–p6 are training material → they are NOT eval prompts for the proof
-(they remain a secondary tracked set, reported separately as "seen" numbers).
+1. **`gen-dist-9b.txt`** — the quant model's OWN generation texts (captured pi-session
+   transcripts + agent-loop transcript), replayed as fixed text. This is where the live
+   gap should reproduce deterministically; it is the corpus the retrain must improve.
+   Successive retrain rounds must use FRESH captured generations for training and keep
+   this file eval-only (or regenerate an eval split per round — never train on it).
+2. **`eval-code-64k.txt`** — held-out generic corpus (CPython). CONTROL: must stay flat.
 
-## Eval set (held out)
+## Protocol per arm
 
-Live battery prompts (same classes as p1–p6, fresh content):
-- `pe1-code-short.txt` ~150B, `pe2-code-medium.txt` ~6KB, `pe3-agentic-long.txt` ~23KB,
-- `pe4-16k.txt`, `pe5-32k.txt`, `pe6-64k.txt` (fresh source material: CPython stdlib code,
-  different public-domain prose, freshly composed agent-session doc).
+`replay-acceptance` K=4 stride=8 chunk=512 (fixed), dumps kept:
+- gen-dist corpus (~20k tokens) + eval-code (65536 tokens).
 
-Replay corpora (held out): `eval-code-64k.txt` (CPython concat), `eval-prose-64k.txt`
-(different Gutenberg text), `eval-agentic-64k.txt` (fresh session doc).
+## Success criteria
 
-## Protocol per arm (BEFORE and AFTER identical)
+- BEFORE must first show a real gap on gen-dist (st-ct vs bf16 beyond the ~2-3%
+  quant-arm noise floor). If it doesn't, the head has nothing measurable to heal on this
+  metric and the result is reported as such.
+- AFTER closes ≥50% of that gap on gen-dist, while eval-code slot-0 stays within the
+  noise floor of BEFORE (no forced-context regression).
+- Bonus (optional, cheap): battery p1/K2-K3 recheck as a secondary live-flavored signal.
 
-1. Live battery: `acceptance_battery.sh` — PROMPTS="pe1..pe6", KS="1 2 3 4", N=3,
-   NGEN=128, RUN_AGENTLOOP=1 (8 turns, seed pe2). Self-consistency must PASS on every row.
-2. Teacher-forced replay: `replay-acceptance` over the 3 eval corpora, K=4, stride=16,
-   chunk=512 (fixed), 65536 tokens, dumps kept.
-3. Speed: spec tok/s + speedup-vs-generate come free in the battery rows.
+## Runbook
 
-`eval/run_eval.sh <model_dir> <tag>` runs all of it → `eval/results/<tag>/`.
-`eval/compare.py <before_tag> <after_tag>` → delta report.
-
-## Metrics and success criteria
-
-Primary: live-chain acceptance per (prompt,K), median of N=3.
-- **Success**: AFTER closes ≥50% of the live (bf16 − st-ct) gap on the held-out battery,
-  consistently across prompt classes (not one cell), at K=1..4.
-- **Controls**: teacher-forced replay slot-0 within the arm's chunk-FP-order noise floor
-  (~2-3%) of BEFORE — the head must not overfit into forced-context regression;
-  self-consistency PASS everywhere (exactness is non-negotiable).
-- Secondary: per-slot decay, chain len, spec tok/s / speedup (accepted-length × speed is
-  the end-to-end win), seen-set (p1–p6) numbers reported for reference only.
-- Clean negative = AFTER within noise of BEFORE on held-out live battery with healthy
-  training curves — publishable as "PTQ mismatch is not head-repairable at 9B".
-
-## Order of operations
-
-1. BEFORE eval runs after the current p1–p6 battery finishes (GPU serial).
-2. Training (task #10) touches only training data.
-3. AFTER eval = patch head → same two commands, tag `after-<run-id>`.
+BEFORE/AFTER, on the box, per arm:
+```
+BW24_REPLAY_K=4 BW24_REPLAY_STRIDE=8 BW24_REPLAY_CHUNK=512 \
+  BW24_REPLAY_DUMP=<out>.jsonl BW24_PROMPT_FILE=~/hqmtp-eval/corpora/<corpus>.txt \
+  ./target/release/replay-acceptance <model_dir>       # + BW24_FULL_PREC=1 for the ceiling
+```
+Compare: `eval/compare.py` replay section (battery section idle until live resumes).
