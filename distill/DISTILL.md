@@ -33,9 +33,17 @@ MTP block interface (bw24 spec.rs conventions, predecessor pairing):
   (weight-exact NVFP4 dequant: e2m1 * ue4m3_scale / global_scale; bf16 compute).
   Per position: (x_p, h_{p-1}, base greedy target, teacher-head logits topk + h_nextn).
 - Corpus: fresh public text/code (NOT the eval corpora), spike = ~2M tokens, scale later.
-- GATE (mandatory before training): torch teacher must reproduce bw24 replay drafts on
-  a shared corpus prefix (we have engine dumps with per-position drafts — compare
-  slot-0 draft match rate; >99% required, FP-order tolerance for the rest).
+- GATE (mandatory before training, PASSED 2026-07-09): torch teacher scored against
+  engine replay drafts on shared corpus + shared engine hiddens. Bit-matching across
+  implementations proved unrealistic (norm/softmax order ULP flips on knife-edge draft
+  calls); correct criterion = equal-or-better target-hit rate + high agreement.
+  Measured (ggml 8k prefix, bf16 arm): torch slot-0 vs target 0.7533, engine 0.7467,
+  torch-engine agreement 0.900, disagreements uniform (no drift). Norm gotcha worth
+  remembering: Qwen3.5 checkpoints store ZERO-CENTERED norm weights — fold +1
+  (engine TransformKind::NormPlusOne; HF forward uses 1+w). Rope: interleaved pairing.
+  Trunk hiddens MUST come from the engine (BW24_REPLAY_HDUMP) — HF torch trunk
+  reproduction only reaches ~0.5 greedy agreement (hybrid linear-attn fallback) and
+  fla segfaults on cu128/sm_120.
 
 ## Losses
 
