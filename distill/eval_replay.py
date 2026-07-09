@@ -19,7 +19,7 @@ import numpy as np
 import torch
 
 from qwen_mtp import TeacherHead
-from heads import StudentS1, StudentS2
+from heads import StudentS1, StudentS2, StudentSV
 from train import batched_teacher_step0, teacher_ctx_rows
 
 
@@ -66,8 +66,14 @@ def eval_model(kind, model, T, ids, hid, bg, ps, W, B=48):
         else:
             sk, sv = model.ctx_rows(ctx_emb, ctx_hprev, ctx_pos)
             pre, _ = model(emb_q, hprev_q, (sk, sv), pos_q, valid)
-            logits = (pre.to(T.lm_head.dtype) @ T.lm_head.T).float()
-        hits += int((logits.argmax(-1) == tgt).sum())
+            if kind == "sv":
+                logits = model.head_logits(pre).float()
+            else:
+                logits = (pre.to(T.lm_head.dtype) @ T.lm_head.T).float()
+        pred = logits.argmax(-1)
+        if kind == "sv":
+            pred = model.to_target_ids(pred)          # OOV targets = automatic miss
+        hits += int((pred == tgt).sum())
     return hits / len(ps)
 
 
@@ -95,7 +101,12 @@ def main():
     print(f"{'teacher (windowed)':24} slot0 {acc:.4f}")
     for c in args.ckpt:
         ck = torch.load(c, map_location="cuda", weights_only=False)
-        S = (StudentS1() if ck["student"] == "s1" else StudentS2()).cuda()
+        if ck["student"] == "sv":
+            hot = torch.load("/opt/dlami/nvme/hqmtp-data2/hot32k.pt",
+                             weights_only=False)["hot_ids"]
+            S = StudentSV(hot).cuda()
+        else:
+            S = (StudentS1() if ck["student"] == "s1" else StudentS2()).cuda()
         S.load_state_dict(ck["state"])
         S.eval()
         acc = eval_model(ck["student"], S, T, ids, hid, bg, ps, args.window)

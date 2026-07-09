@@ -23,7 +23,7 @@ import torch
 import torch.nn.functional as F
 
 from qwen_mtp import TeacherHead
-from heads import StudentS1, StudentS2, param_count
+from heads import StudentS1, StudentS2, StudentSV, param_count
 
 DATA_DIR = "/opt/dlami/nvme/hqmtp-distill-data"
 
@@ -130,7 +130,8 @@ def sample_batch(corpora, B, W, device):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--student", choices=["s1", "s2"], required=True)
+    ap.add_argument("--student", choices=["s1", "s2", "sv"], required=True)
+    ap.add_argument("--hot", default="/opt/dlami/nvme/hqmtp-data2/hot32k.pt")
     ap.add_argument("--steps", type=int, default=3000)
     ap.add_argument("--batch", type=int, default=24)
     ap.add_argument("--window", type=int, default=768)
@@ -153,11 +154,22 @@ def main():
         p.requires_grad_(False)
     from transformers import AutoTokenizer
     tok = AutoTokenizer.from_pretrained("/data/ai-ml/hf-models/qwen35-9b-hf")
-    corpora = [Corpus(b[: -len(".hiddens")], tok, args.corpus_dir)
-               for b in sorted(glob.glob(f"{args.data_dir}/{args.glob}"))]
+    # glob COMPLETED extractions only (meta written last — in-flight .hiddens files race)
+    metas = sorted(glob.glob(f"{args.data_dir}/{args.glob}.meta.json")) or \
+            sorted(glob.glob(f"{args.data_dir}/{args.glob}"))
+    corpora = [Corpus(b.replace(".hiddens.meta.json", ".hiddens")[: -len(".hiddens")],
+                      tok, args.corpus_dir) for b in metas]
     print(f"[data] {len(corpora)} corpora, {sum(c.n for c in corpora)} tokens")
 
-    S = (StudentS1() if args.student == "s1" else StudentS2()).to(dev)
+    if args.student == "sv":
+        hot = torch.load(args.hot, weights_only=False)["hot_ids"]
+        S = StudentSV(hot, big_lm_head=T.lm_head).to(dev)
+        # full-id -> draft-idx map (-1 = out of hot set; CE masks those positions)
+        t2d = torch.full((T.lm_head.shape[0],), -1, dtype=torch.long, device=dev)
+        t2d[hot.to(dev)] = torch.arange(len(hot), device=dev)
+    else:
+        S = (StudentS1() if args.student == "s1" else StudentS2()).to(dev)
+        t2d = None
     print(f"[student] {args.student} params {param_count(S)/1e6:.1f}M "
           f"(teacher block ~243M)")
     opt = torch.optim.AdamW(S.parameters(), lr=args.lr, weight_decay=0.01)
@@ -187,16 +199,30 @@ def main():
         else:
             sk, sv = S.ctx_rows(ctx_emb, ctx_hprev, ctx_pos)
             pre_head, s_h = S(emb_q, hprev_q, (sk, sv), pos_q, valid)
-        s_logits = pre_head.to(lm_head.dtype) @ lm_head.T
-        s_logits = s_logits.float()
+        if isinstance(S, StudentSV):
+            s_logits = S.head_logits(pre_head).float()
+        else:
+            s_logits = (pre_head.to(lm_head.dtype) @ lm_head.T).float()
 
         loss = torch.zeros((), device=dev)
-        if args.alpha > 0:
+        if args.alpha > 0 and isinstance(S, StudentSV):
+            ti = t2d[t_top_i]                         # teacher topk -> draft idx
+            ok = ti >= 0
+            s_top = s_logits.gather(-1, ti.clamp(min=0))
+            s_top = s_top.masked_fill(~ok, -1e9)
+            s_logp = s_top.log_softmax(-1)
+            tp = (t_top_p * ok).float()
+            tp = tp / tp.sum(-1, keepdim=True).clamp(min=1e-9)
+            loss = loss + args.alpha * F.kl_div(s_logp, tp, reduction="batchmean")
+        elif args.alpha > 0:
             s_top = s_logits.gather(-1, t_top_i)
             s_logp = s_top.log_softmax(-1)
             loss = loss + args.alpha * F.kl_div(s_logp, t_top_p, reduction="batchmean")
         if args.beta > 0:
-            loss = loss + args.beta * F.cross_entropy(s_logits, tgt)
+            ce_tgt = t2d[tgt] if t2d is not None else tgt
+            keep = ce_tgt >= 0
+            if keep.any():
+                loss = loss + args.beta * F.cross_entropy(s_logits[keep], ce_tgt[keep])
         if args.gamma > 0:
             loss = loss + args.gamma * (1 - F.cosine_similarity(
                 s_h.float(), t_h.float(), dim=-1).mean())
@@ -208,8 +234,11 @@ def main():
 
         if step % 100 == 0 or step == 1:
             with torch.no_grad():
-                acc_bg = (s_logits.argmax(-1) == tgt).float().mean().item()
-                acc_t = (s_logits.argmax(-1) == t_logits.argmax(-1)).float().mean().item()
+                pred = s_logits.argmax(-1)
+                if isinstance(S, StudentSV):
+                    pred = S.to_target_ids(pred)
+                acc_bg = (pred == tgt).float().mean().item()
+                acc_t = (pred == t_logits.argmax(-1)).float().mean().item()
                 tacc = (t_logits.argmax(-1) == tgt).float().mean().item()
             print(f"[{step:5d}] loss {loss.item():.4f} | student-vs-bg {acc_bg:.3f} "
                   f"student-vs-teacher {acc_t:.3f} teacher-vs-bg {tacc:.3f}")

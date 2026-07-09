@@ -145,5 +145,26 @@ class StudentS2(nn.Module):
         return self.final(h), h
 
 
+class StudentSV(StudentS2):
+    """Small-vocab small-block draft head (llama.cpp #25187 follow-through): S2 block
+    + OWN trainable lm_head over a frequency-ranked hot vocab (warm-started from the
+    big lm_head's hot rows) + d2t map. Verify stays full-vocab (lossless); the head
+    simply cannot draft cold tokens — ceiling = hot-set coverage (~0.95-0.99)."""
+
+    def __init__(self, hot_ids, big_lm_head=None, d=4096, **kw):
+        super().__init__(d=d, **kw)
+        self.register_buffer("d2t", hot_ids.clone())
+        self.lm_head = nn.Linear(d, len(hot_ids), bias=False)
+        if big_lm_head is not None:
+            with torch.no_grad():
+                self.lm_head.weight.copy_(big_lm_head[hot_ids].float())
+
+    def head_logits(self, pre_head):
+        return self.lm_head(pre_head)          # [B, V_hot]
+
+    def to_target_ids(self, draft_idx):
+        return self.d2t[draft_idx]
+
+
 def param_count(m):
     return sum(p.numel() for p in m.parameters())
