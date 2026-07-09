@@ -29,14 +29,15 @@ DATA_DIR = "/opt/dlami/nvme/hqmtp-distill-data"
 
 
 class Corpus:
-    def __init__(self, base, tok):
+    def __init__(self, base, tok, corpus_dir=None):
         meta = json.load(open(base + ".hiddens.meta.json"))
         self.n, self.d = meta["n_tokens"], meta["n_embd"]
         self.bg = torch.tensor(meta["bg"], dtype=torch.long)
-        self.hid = np.memmap(base + ".hiddens", dtype=np.float32, mode="r",
-                             shape=(self.n, self.d))
+        from hdata import Hiddens
+        self.hid = Hiddens(base)
         name = os.path.basename(base).replace("train-", "")
-        cands = glob.glob(os.path.expanduser(f"~/corpora/{name}*"))
+        pats = ([f"{corpus_dir}/{name}*"] if corpus_dir else []) + [f"~/corpora/{name}*"]
+        cands = sum((glob.glob(os.path.expanduser(p)) for p in pats), [])
         assert cands, f"corpus file for {name}?"
         ids = tok(open(cands[0]).read()).input_ids[: self.n]
         assert len(ids) == self.n, f"{name}: token count {len(ids)} != {self.n}"
@@ -117,7 +118,6 @@ def sample_batch(corpora, B, W, device):
     valid = idx < ps[:, None]
     idx = idx.clamp(max=c.n - 1)
     ctx_tok = c.ids[idx]
-    hid = torch.from_numpy(np.ascontiguousarray(c.hid))   # memmap view (lazy rows below)
     # gather hidden rows: h_prev of row i = hid[i-1] (zeros at 0)
     prev_idx = (idx - 1).clamp(min=0)
     ctx_hprev = torch.from_numpy(c.hid[prev_idx.numpy()]).float()
@@ -141,6 +141,9 @@ def main():
     ap.add_argument("--topk", type=int, default=64)
     ap.add_argument("--out", required=True)
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--data-dir", default=DATA_DIR)
+    ap.add_argument("--corpus-dir")
+    ap.add_argument("--glob", default="train-*.hiddens")
     args = ap.parse_args()
     dev = "cuda"
     torch.manual_seed(7)
@@ -150,8 +153,8 @@ def main():
         p.requires_grad_(False)
     from transformers import AutoTokenizer
     tok = AutoTokenizer.from_pretrained("/data/ai-ml/hf-models/qwen35-9b-hf")
-    corpora = [Corpus(b[: -len(".hiddens")], tok)
-               for b in sorted(glob.glob(f"{DATA_DIR}/train-*.hiddens"))]
+    corpora = [Corpus(b[: -len(".hiddens")], tok, args.corpus_dir)
+               for b in sorted(glob.glob(f"{args.data_dir}/{args.glob}"))]
     print(f"[data] {len(corpora)} corpora, {sum(c.n for c in corpora)} tokens")
 
     S = (StudentS1() if args.student == "s1" else StudentS2()).to(dev)

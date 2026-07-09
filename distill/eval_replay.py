@@ -25,8 +25,8 @@ from train import batched_teacher_step0, teacher_ctx_rows
 
 def load(base):
     meta = json.load(open(base + ".hiddens.meta.json"))
-    hid = np.memmap(base + ".hiddens", dtype=np.float32, mode="r",
-                    shape=(meta["n_tokens"], meta["n_embd"]))
+    from hdata import Hiddens
+    hid = Hiddens(base)
     rows = [json.loads(l) for l in open(base + ".drafts.jsonl")]
     return meta, hid, rows
 

@@ -21,7 +21,8 @@ from qwen_mtp import TeacherHead
 def load_data(base):
     meta = json.load(open(base + ".hiddens.meta.json"))
     n, d = meta["n_tokens"], meta["n_embd"]
-    hid = np.memmap(base + ".hiddens", dtype=np.float32, mode="r", shape=(n, d))
+    from hdata import Hiddens
+    hid = Hiddens(base)
     rows = [json.loads(l) for l in open(base + ".drafts.jsonl")]
     return meta, hid, rows
 
