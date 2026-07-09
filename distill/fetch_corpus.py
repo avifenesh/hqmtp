@@ -50,15 +50,30 @@ def main():
     args = ap.parse_args()
     n = args.files_per_source
 
-    stack = load_dataset("bigcode/the-stack-smol", data_dir="data/python",
-                         split="train", streaming=True)
-    pack(stack, args.out, "code-py", n)
-    stack_c = load_dataset("bigcode/the-stack-smol", data_dir="data/c",
-                           split="train", streaming=True)
-    pack(stack_c, args.out, "code-c", n // 2)
-    stack_rs = load_dataset("bigcode/the-stack-smol", data_dir="data/rust",
-                            split="train", streaming=True)
-    pack(stack_rs, args.out, "code-rs", n // 2)
+    # Code: shallow-clone real repos (the-stack is gated). Mixed languages.
+    import glob as g
+    import subprocess
+    repos = [("https://github.com/python/cpython", ["Lib/**/*.py"]),
+             ("https://github.com/ggml-org/llama.cpp", ["src/**/*.cpp", "src/**/*.c", "ggml/**/*.c", "ggml/**/*.cpp", "ggml/**/*.cu"]),
+             ("https://github.com/tokio-rs/tokio", ["tokio/src/**/*.rs"]),
+             ("https://github.com/redis/redis", ["src/**/*.c"])]
+    tmp = os.path.join(args.out, "_repos")
+    files = []
+    for url, pats in repos:
+        name = url.rsplit("/", 1)[1]
+        dst = os.path.join(tmp, name)
+        if not os.path.isdir(dst):
+            subprocess.run(["git", "clone", "--depth", "1", url, dst], check=True,
+                           capture_output=True)
+        for p in pats:
+            files += sorted(g.glob(os.path.join(dst, p), recursive=True))
+    def code_stream():
+        for f in files:
+            try:
+                yield {"text": open(f, errors="replace").read()}
+            except OSError:
+                continue
+    pack(code_stream(), args.out, "code", 2 * n)
     web = load_dataset("HuggingFaceFW/fineweb", name="sample-10BT",
                        split="train", streaming=True)
     pack(web, args.out, "web", 2 * n)
