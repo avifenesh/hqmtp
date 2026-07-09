@@ -1,0 +1,10 @@
+corpus: 247031 chars -> 65536 tokens | K=4 stride=16 chunk=512 full_prec=true
+replay: 4095 eval positions in 1920.7s (34.1 corpus tok/s incl. chains)
+    ctx-bucket       n  slot0  slot1  slot2  slot3   chain
+         0-512      31  0.613  0.194  0.032  0.032   0.210
+      512-2048      96  0.510  0.208  0.135  0.094   0.185
+     2048-8192     384  0.591  0.279  0.133  0.068   0.221
+    8192-16384     512  0.580  0.303  0.152  0.055   0.236
+   16384-32768    1024  0.617  0.303  0.139  0.073   0.240
+   32768-65536    2048  0.587  0.276  0.131  0.067   0.224
+wrote 4095 rows -> research/mtp-heal/g7e/replay-v2/replay-bf16-agentic-64k.jsonl

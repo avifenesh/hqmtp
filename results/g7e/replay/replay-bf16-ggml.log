@@ -1,1 +1,10 @@
 corpus: 250892 chars -> 65536 tokens | K=4 stride=16 chunk=512 full_prec=true
+replay: 4095 eval positions in 1690.3s (38.8 corpus tok/s incl. chains)
+    ctx-bucket       n  slot0  slot1  slot2  slot3   chain
+         0-512      31  0.645  0.452  0.194  0.161   0.306
+      512-2048      96  0.688  0.396  0.229  0.094   0.307
+     2048-8192     384  0.823  0.612  0.404  0.164   0.460
+    8192-16384     512  0.818  0.605  0.385  0.211   0.461
+   16384-32768    1024  0.832  0.614  0.384  0.214   0.462
+   32768-65536    2048  0.790  0.561  0.331  0.142   0.404
+wrote 4095 rows -> research/mtp-heal/g7e/replay/replay-bf16-ggml.jsonl

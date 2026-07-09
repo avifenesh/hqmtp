@@ -1,0 +1,11 @@
+corpus: 247031 chars -> 65536 tokens | K=4 stride=16 chunk=512 full_prec=false
+replay: 4095 eval positions in 180.8s (362.6 corpus tok/s incl. chains)
+[gate] PASS: bg exact; draft slot diff 3/508=0.0059 (chunk FP-order, <=1% allowed)
+    ctx-bucket       n  slot0  slot1  slot2  slot3   chain
+         0-512      31  0.645  0.194  0.000  0.032   0.210
+      512-2048      96  0.573  0.208  0.104  0.094   0.198
+     2048-8192     384  0.602  0.266  0.130  0.065   0.223
+    8192-16384     512  0.584  0.320  0.160  0.082   0.240
+   16384-32768    1024  0.596  0.289  0.140  0.071   0.232
+   32768-65536    2048  0.589  0.283  0.134  0.065   0.225
+wrote 4095 rows -> research/mtp-heal/g7e/replay-v2/replay-nvfp4st-agentic-64k.jsonl

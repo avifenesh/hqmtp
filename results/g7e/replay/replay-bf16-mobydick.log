@@ -1,0 +1,10 @@
+corpus: 1234609 chars -> 65536 tokens | K=4 stride=16 chunk=512 full_prec=true
+replay: 4095 eval positions in 1640.3s (40.0 corpus tok/s incl. chains)
+    ctx-bucket       n  slot0  slot1  slot2  slot3   chain
+         0-512      31  0.613  0.452  0.226  0.226   0.315
+      512-2048      96  0.646  0.469  0.406  0.219   0.354
+     2048-8192     384  0.557  0.229  0.096  0.055   0.191
+    8192-16384     512  0.516  0.166  0.098  0.049   0.164
+   16384-32768    1024  0.525  0.157  0.091  0.047   0.166
+   32768-65536    2048  0.547  0.196  0.076  0.046   0.177
+wrote 4095 rows -> research/mtp-heal/g7e/replay/replay-bf16-mobydick.jsonl
