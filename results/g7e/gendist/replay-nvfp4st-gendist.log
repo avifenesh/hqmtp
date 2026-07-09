@@ -1,0 +1,9 @@
+corpus: 86323 chars -> 17794 tokens | K=4 stride=8 chunk=512 full_prec=false
+replay: 2223 eval positions in 44.2s (402.7 corpus tok/s incl. chains)
+    ctx-bucket       n  slot0  slot1  slot2  slot3   chain
+         0-512      63  0.508  0.206  0.032  0.079   0.163
+      512-2048     192  0.365  0.188  0.120  0.109   0.126
+     2048-8192     768  0.302  0.164  0.109  0.073   0.096
+    8192-16384    1024  0.762  0.610  0.380  0.229   0.464
+   16384-32768     176  0.670  0.409  0.210  0.045   0.294
+wrote 2223 rows -> research/mtp-heal/g7e/gendist/replay-nvfp4st-gendist.jsonl
