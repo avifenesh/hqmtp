@@ -186,13 +186,15 @@ def main():
             sample_batch(corpora, args.batch, args.window, dev)
         emb_q = embed[tok_q].float()
         ctx_emb = embed[ctx_tok].float()
-        with torch.no_grad():
-            tk, tv = teacher_ctx_rows(T, ctx_emb.to(T.dtype_), ctx_hprev.to(T.dtype_),
-                                      ctx_pos)
-            t_logits, t_h = batched_teacher_step0(
-                T, emb_q.to(T.dtype_), hprev_q.to(T.dtype_), pos_q, tk, tv, valid)
-            t_top_p, t_top_i = t_logits.softmax(-1).topk(args.topk, dim=-1)
-            t_top_p = t_top_p / t_top_p.sum(-1, keepdim=True)
+        need_teacher = args.alpha > 0 or args.gamma > 0
+        if need_teacher:
+            with torch.no_grad():
+                tk, tv = teacher_ctx_rows(T, ctx_emb.to(T.dtype_), ctx_hprev.to(T.dtype_),
+                                          ctx_pos)
+                t_logits, t_h = batched_teacher_step0(
+                    T, emb_q.to(T.dtype_), hprev_q.to(T.dtype_), pos_q, tk, tv, valid)
+                t_top_p, t_top_i = t_logits.softmax(-1).topk(args.topk, dim=-1)
+                t_top_p = t_top_p / t_top_p.sum(-1, keepdim=True)
 
         if isinstance(S, StudentS1):
             pre_head, s_h = S(emb_q, hprev_q, None)
@@ -238,6 +240,9 @@ def main():
                 if isinstance(S, StudentSV):
                     pred = S.to_target_ids(pred)
                 acc_bg = (pred == tgt).float().mean().item()
+                if not need_teacher:
+                    print(f"[{step:5d}] loss {loss.item():.4f} | student-vs-bg {acc_bg:.3f}")
+                    continue
                 acc_t = (pred == t_logits.argmax(-1)).float().mean().item()
                 tacc = (t_logits.argmax(-1) == tgt).float().mean().item()
             print(f"[{step:5d}] loss {loss.item():.4f} | student-vs-bg {acc_bg:.3f} "
