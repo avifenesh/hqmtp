@@ -36,6 +36,7 @@ class Corpus:
         from hdata import Hiddens
         self.hid = Hiddens(base)
         name = os.path.basename(base).replace("train-", "")
+        self.name = name
         pats = ([f"{corpus_dir}/{name}*"] if corpus_dir else []) + [f"~/corpora/{name}*"]
         cands = sum((glob.glob(os.path.expanduser(p)) for p in pats), [])
         assert cands, f"corpus file for {name}?"
@@ -107,9 +108,33 @@ def rope_batch(T, x, pos):
     return torch.cat((torch.stack((o1, o2), -1).flatten(-2).to(x.dtype), xp), -1)
 
 
-def sample_batch(corpora, B, W, device):
+class Prefetcher:
+    """Background-thread batch producer — the memmap gathers (~1GB/batch at B=64,W=2048)
+    starved the GPU (measured 135W, bursty util). Overlaps CPU gather + H2D with compute."""
+
+    def __init__(self, corpora, B, W, device, weights, depth=3):
+        import queue
+        import threading
+        self.q = queue.Queue(maxsize=depth)
+        self.stop = False
+
+        def worker():
+            while not self.stop:
+                self.q.put(sample_batch(corpora, B, W, device, weights))
+        self.ts = [threading.Thread(target=worker, daemon=True) for _ in range(2)]
+        for t in self.ts:
+            t.start()
+
+    def next(self):
+        return self.q.get()
+
+
+def sample_batch(corpora, B, W, device, weights=None):
     """Random positions; returns query inputs + window context (tokens, hprev, pos, mask)."""
-    c = corpora[torch.randint(len(corpora), (1,)).item()]
+    if weights is not None:
+        c = corpora[int(torch.multinomial(weights, 1))]
+    else:
+        c = corpora[torch.randint(len(corpora), (1,)).item()]
     ps = torch.randint(1, c.n - 2, (B,))
     lo = (ps - W).clamp(min=0)
     tok_q = c.ids[ps]
@@ -145,6 +170,9 @@ def main():
     ap.add_argument("--data-dir", default=DATA_DIR)
     ap.add_argument("--corpus-dir")
     ap.add_argument("--glob", default="train-*.hiddens")
+    ap.add_argument("--init-from", help="checkpoint to continue from")
+    ap.add_argument("--save-every", type=int, default=0)
+    ap.add_argument("--chat-boost", type=float, default=1.0)
     args = ap.parse_args()
     dev = "cuda"
     torch.manual_seed(7)
@@ -172,6 +200,15 @@ def main():
         t2d = None
     print(f"[student] {args.student} params {param_count(S)/1e6:.1f}M "
           f"(teacher block ~243M)")
+    if args.init_from:
+        ck = torch.load(args.init_from, map_location=dev, weights_only=False)
+        S.load_state_dict(ck["state"])
+        print(f"[init] continued from {args.init_from}")
+    weights = torch.tensor([args.chat_boost if c.name.startswith("chat") else 1.0
+                            for c in corpora])
+    if args.chat_boost != 1.0:
+        print(f"[data] chat-boost {args.chat_boost}: chat mass "
+              f"{weights[weights > 1].sum() / weights.sum():.3f}")
     opt = torch.optim.AdamW(S.parameters(), lr=args.lr, weight_decay=0.01)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, args.steps)
 
@@ -181,9 +218,9 @@ def main():
 
     embed = T.embed          # frozen, shared
     lm_head = T.lm_head
+    pf = Prefetcher(corpora, args.batch, args.window, dev, weights)
     for step in range(1, args.steps + 1):
-        (tok_q, hprev_q, pos_q, ctx_tok, ctx_hprev, ctx_pos, valid, tgt) = \
-            sample_batch(corpora, args.batch, args.window, dev)
+        (tok_q, hprev_q, pos_q, ctx_tok, ctx_hprev, ctx_pos, valid, tgt) = pf.next()
         emb_q = embed[tok_q].float()
         ctx_emb = embed[ctx_tok].float()
         need_teacher = args.alpha > 0 or args.gamma > 0
@@ -234,6 +271,9 @@ def main():
         opt.step()
         sched.step()
 
+        if args.save_every and step % args.save_every == 0 and step < args.steps:
+            torch.save({"student": args.student, "state": S.state_dict(),
+                        "args": vars(args)}, f"{args.out}-step{step}.pt")
         if step % 100 == 0 or step == 1:
             with torch.no_grad():
                 pred = s_logits.argmax(-1)
@@ -241,7 +281,7 @@ def main():
                     pred = S.to_target_ids(pred)
                 acc_bg = (pred == tgt).float().mean().item()
                 if not need_teacher:
-                    print(f"[{step:5d}] loss {loss.item():.4f} | student-vs-bg {acc_bg:.3f}")
+                    print(f"[{step:5d}] loss {loss.item():.4f} | student-vs-bg {acc_bg:.3f}", flush=True)
                     continue
                 acc_t = (pred == t_logits.argmax(-1)).float().mean().item()
                 tacc = (t_logits.argmax(-1) == tgt).float().mean().item()
