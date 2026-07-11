@@ -33,3 +33,26 @@ rule validated cleanly. Earlier "memorization" read was an eval artifact (gen-di
 greedy degenerate transcripts ≠ the temp-0.7 training distribution; retired as primary).
 Teacher ceiling on own text 0.879: serving regime is the easy regime. Round 2 running:
 2000 docs (~6.5M own tokens), batch 128, held-out split as the standing eval.
+
+## Own-output round 2 (2026-07-11): scaling confirmed
+
+1,380 docs / 5.2M own-tokens (4x round 1), batch 128, 10k steps, clean warm-start.
+Held-out split = 45 unseen own-output docs (12,117 positions):
+
+| head | slot0 | % teacher |
+|---|---|---|
+| engine (full ctx) | 0.853 | — |
+| teacher (windowed) | 0.863 | 100% |
+| sv-own2 (10k, 5.2M tok) | 0.636 | 74% |
+| sv-own2 @7.5k | 0.624 | |
+| sv-own (round 1, 1.3M tok) | 0.550 | 64% |
+
+- 4x data => +8.6pts at identical architecture; curve decelerating but still rising
+  (+1.2pts over the last 2.5k steps).
+- 74% of teacher acceptance at ~13% draft compute, 32k vocab, 212M params.
+- Code control 0.384: own-output specialization trades generic-code acceptance —
+  correct trade for the serving regime.
+- Next-lever menu: (a) 4x data again (~20M tokens, ~6h gen at current serve rate,
+  projected ~0.69-0.70), (b) bigger student (d_s 2560/3072 — capacity may bind
+  before data), (c) chain training slots 1-3 (multiplies accepted length, not slot0),
+  (d) engine integration of current best (d2t GGUF export -> real e2e tok/s).
