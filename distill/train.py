@@ -276,12 +276,12 @@ def main():
             if args.alpha > 0 and tt_i is not None and isinstance(S, StudentSV):
                 ti = t2d[tt_i[:, j]]                  # teacher topk -> draft idx
                 ok = ti >= 0
-                s_top = lg.gather(-1, ti.clamp(min=0))
-                s_top = s_top.masked_fill(~ok, -1e9)
-                s_logp = s_top.log_softmax(-1)
                 tp = (tt_p[:, j] * ok).float()
                 tp = tp / tp.sum(-1, keepdim=True).clamp(min=1e-9)
-                loss = loss + args.alpha * F.kl_div(s_logp, tp, reduction="batchmean")
+                # soft-CE over the FULL draft vocab: subset-only log_softmax leaves the
+                # other 32k logits unconstrained (pure-KD argmax collapsed to junk)
+                s_logp = lg.log_softmax(-1).gather(-1, ti.clamp(min=0))
+                loss = loss + args.alpha * -(tp * s_logp).sum(-1).mean()
             if args.beta > 0:
                 sj = slot_tgts[:, j]
                 ce_tgt = t2d[sj] if t2d is not None else sj
