@@ -113,9 +113,10 @@ class StudentS2(nn.Module):
         k = self._rope(k, pos)                            # [B, W, n_kv, hd]
         return k, v
 
-    def forward(self, emb, h_prev, ctx, q_pos, ctx_mask=None):
+    def forward(self, emb, h_prev, ctx, q_pos, ctx_mask=None, return_kv=False):
         """One draft query per batch row. emb/h_prev [B,d]; ctx=(K,V) [B,W,n_kv,hd];
-        q_pos [B] rope positions. Own-row attention included (row appended)."""
+        q_pos [B] rope positions. Own-row attention included (row appended).
+        return_kv: also return this step's own (k,v) row for chain-step KV extension."""
         x = self._mix(emb, h_prev)                        # [B, d_s]
         xin = self.in_ln(x)
         B = x.shape[0]
@@ -142,6 +143,8 @@ class StudentS2(nn.Module):
         z = self.post_ln(h1)
         h_s = h1 + self.down_p(F.silu(self.gate_p(z)) * self.up_p(z))
         h = self.out_up(h_s)                              # back to n_embd
+        if return_kv:
+            return self.final(h), h, (k_own, v_own)
         return self.final(h), h
 
 

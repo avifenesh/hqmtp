@@ -43,6 +43,8 @@ class Corpus:
         ids = tok(open(cands[0]).read()).input_ids[: self.n]
         assert len(ids) == self.n, f"{name}: token count {len(ids)} != {self.n}"
         self.ids = torch.tensor(ids, dtype=torch.long)
+        tt = base + ".tt.npz"
+        self.tt = np.load(tt, mmap_mode="r") if os.path.exists(tt) else None
 
 
 def batched_teacher_step0(T, emb_q, hprev_q, pos_q, ctx_k, ctx_v, ctx_mask):
@@ -112,7 +114,7 @@ class Prefetcher:
     """Background-thread batch producer — the memmap gathers (~1GB/batch at B=64,W=2048)
     starved the GPU (measured 135W, bursty util). Overlaps CPU gather + H2D with compute."""
 
-    def __init__(self, corpora, B, W, device, weights, depth=3):
+    def __init__(self, corpora, B, W, device, weights, depth=3, slots=1):
         import queue
         import threading
         self.q = queue.Queue(maxsize=depth)
@@ -120,7 +122,7 @@ class Prefetcher:
 
         def worker():
             while not self.stop:
-                self.q.put(sample_batch(corpora, B, W, device, weights))
+                self.q.put(sample_batch(corpora, B, W, device, weights, slots))
         self.ts = [threading.Thread(target=worker, daemon=True) for _ in range(2)]
         for t in self.ts:
             t.start()
@@ -129,13 +131,14 @@ class Prefetcher:
         return self.q.get()
 
 
-def sample_batch(corpora, B, W, device, weights=None):
-    """Random positions; returns query inputs + window context (tokens, hprev, pos, mask)."""
+def sample_batch(corpora, B, W, device, weights=None, slots=1):
+    """Random positions; returns query inputs + window context (tokens, hprev, pos, mask)
+    + chain inputs (x_{p+j}), per-slot bg targets, and teacher topk targets if present."""
     if weights is not None:
         c = corpora[int(torch.multinomial(weights, 1))]
     else:
         c = corpora[torch.randint(len(corpora), (1,)).item()]
-    ps = torch.randint(1, c.n - 2, (B,))
+    ps = torch.randint(1, c.n - slots - 2, (B,))
     lo = (ps - W).clamp(min=0)
     tok_q = c.ids[ps]
     tgt = c.bg[ps + 1]
@@ -148,9 +151,22 @@ def sample_batch(corpora, B, W, device, weights=None):
     ctx_hprev = torch.from_numpy(c.hid[prev_idx.numpy()]).float()
     ctx_hprev[idx == 0] = 0.0
     hprev_q = torch.from_numpy(c.hid[(ps - 1).numpy()]).float()
+    # chain: inputs x_{p+j}, targets bg[p+1+j] for j in 0..slots-1
+    off = torch.arange(slots)
+    chain_toks = c.ids[ps[:, None] + off[None, :]]              # [B, S]
+    slot_tgts = c.bg[ps[:, None] + 1 + off[None, :]]            # [B, S]
+    if c.tt is not None:
+        pn = ps.numpy()
+        tt_i = torch.from_numpy(np.ascontiguousarray(c.tt["idx"][pn])).long()
+        tt_p = torch.from_numpy(np.ascontiguousarray(c.tt["prob"][pn])).float()
+    else:
+        tt_i = tt_p = None
     return (tok_q.to(device), hprev_q.to(device), (ps + 1).to(device),
             ctx_tok.to(device), ctx_hprev.to(device), (idx + 1).to(device),
-            valid.to(device), tgt.to(device))
+            valid.to(device), tgt.to(device), chain_toks.to(device),
+            slot_tgts.to(device),
+            tt_i.to(device) if tt_i is not None else None,
+            tt_p.to(device) if tt_p is not None else None)
 
 
 def main():
@@ -173,6 +189,7 @@ def main():
     ap.add_argument("--init-from", help="checkpoint to continue from")
     ap.add_argument("--save-every", type=int, default=0)
     ap.add_argument("--chat-boost", type=float, default=1.0)
+    ap.add_argument("--chain-slots", type=int, default=1)
     args = ap.parse_args()
     dev = "cuda"
     torch.manual_seed(7)
@@ -218,12 +235,14 @@ def main():
 
     embed = T.embed          # frozen, shared
     lm_head = T.lm_head
-    pf = Prefetcher(corpora, args.batch, args.window, dev, weights)
+    pf = Prefetcher(corpora, args.batch, args.window, dev, weights, slots=args.chain_slots)
     for step in range(1, args.steps + 1):
-        (tok_q, hprev_q, pos_q, ctx_tok, ctx_hprev, ctx_pos, valid, tgt) = pf.next()
+        (tok_q, hprev_q, pos_q, ctx_tok, ctx_hprev, ctx_pos, valid, tgt,
+         chain_toks, slot_tgts, tt_i, tt_p) = pf.next()
         emb_q = embed[tok_q].float()
         ctx_emb = embed[ctx_tok].float()
-        need_teacher = args.alpha > 0 or args.gamma > 0
+        # KL reads precomputed teacher targets (.tt.npz); live teacher only for gamma
+        need_teacher = args.gamma > 0
         if need_teacher:
             with torch.no_grad():
                 tk, tv = teacher_ctx_rows(T, ctx_emb.to(T.dtype_), ctx_hprev.to(T.dtype_),
@@ -233,35 +252,43 @@ def main():
                 t_top_p, t_top_i = t_logits.softmax(-1).topk(args.topk, dim=-1)
                 t_top_p = t_top_p / t_top_p.sum(-1, keepdim=True)
 
-        if isinstance(S, StudentS1):
-            pre_head, s_h = S(emb_q, hprev_q, None)
-        else:
-            sk, sv = S.ctx_rows(ctx_emb, ctx_hprev, ctx_pos)
-            pre_head, s_h = S(emb_q, hprev_q, (sk, sv), pos_q, valid)
-        if isinstance(S, StudentSV):
-            s_logits = S.head_logits(pre_head).float()
-        else:
-            s_logits = (pre_head.to(lm_head.dtype) @ lm_head.T).float()
+        sk, sv = S.ctx_rows(ctx_emb, ctx_hprev, ctx_pos)
+        cur_k, cur_v, cur_mask = sk, sv, valid
+        h_carrier = hprev_q
+        slot_logits = []
+        for j in range(args.chain_slots):
+            emb_j = embed[chain_toks[:, j]].float()
+            pre_head, s_h, (ko, vo) = S(emb_j, h_carrier, (cur_k, cur_v),
+                                        pos_q + j, cur_mask, return_kv=True)
+            if isinstance(S, StudentSV):
+                slot_logits.append(S.head_logits(pre_head).float())
+            else:
+                slot_logits.append((pre_head.to(lm_head.dtype) @ lm_head.T).float())
+            if j + 1 < args.chain_slots:
+                cur_k = torch.cat((cur_k, ko), dim=1)
+                cur_v = torch.cat((cur_v, vo), dim=1)
+                cur_mask = F.pad(cur_mask, (0, 1), value=True)
+                h_carrier = s_h                      # SELF-recursive: trains the carrier
+        s_logits = slot_logits[0]
 
         loss = torch.zeros((), device=dev)
-        if args.alpha > 0 and isinstance(S, StudentSV):
-            ti = t2d[t_top_i]                         # teacher topk -> draft idx
-            ok = ti >= 0
-            s_top = s_logits.gather(-1, ti.clamp(min=0))
-            s_top = s_top.masked_fill(~ok, -1e9)
-            s_logp = s_top.log_softmax(-1)
-            tp = (t_top_p * ok).float()
-            tp = tp / tp.sum(-1, keepdim=True).clamp(min=1e-9)
-            loss = loss + args.alpha * F.kl_div(s_logp, tp, reduction="batchmean")
-        elif args.alpha > 0:
-            s_top = s_logits.gather(-1, t_top_i)
-            s_logp = s_top.log_softmax(-1)
-            loss = loss + args.alpha * F.kl_div(s_logp, t_top_p, reduction="batchmean")
-        if args.beta > 0:
-            ce_tgt = t2d[tgt] if t2d is not None else tgt
-            keep = ce_tgt >= 0
-            if keep.any():
-                loss = loss + args.beta * F.cross_entropy(s_logits[keep], ce_tgt[keep])
+        for j, lg in enumerate(slot_logits):
+            if args.alpha > 0 and tt_i is not None and isinstance(S, StudentSV):
+                ti = t2d[tt_i[:, j]]                  # teacher topk -> draft idx
+                ok = ti >= 0
+                s_top = lg.gather(-1, ti.clamp(min=0))
+                s_top = s_top.masked_fill(~ok, -1e9)
+                s_logp = s_top.log_softmax(-1)
+                tp = (tt_p[:, j] * ok).float()
+                tp = tp / tp.sum(-1, keepdim=True).clamp(min=1e-9)
+                loss = loss + args.alpha * F.kl_div(s_logp, tp, reduction="batchmean")
+            if args.beta > 0:
+                sj = slot_tgts[:, j]
+                ce_tgt = t2d[sj] if t2d is not None else sj
+                keep = ce_tgt >= 0
+                if keep.any():
+                    loss = loss + args.beta * F.cross_entropy(lg[keep], ce_tgt[keep])
+        loss = loss / max(len(slot_logits), 1)
         if args.gamma > 0:
             loss = loss + args.gamma * (1 - F.cosine_similarity(
                 s_h.float(), t_h.float(), dim=-1).mean())
