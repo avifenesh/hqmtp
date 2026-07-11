@@ -56,3 +56,21 @@ Held-out split = 45 unseen own-output docs (12,117 positions):
   projected ~0.69-0.70), (b) bigger student (d_s 2560/3072 — capacity may bind
   before data), (c) chain training slots 1-3 (multiplies accepted length, not slot0),
   (d) engine integration of current best (d2t GGUF export -> real e2e tok/s).
+
+## Chain distillation on copied teacher logits (2026-07-11)
+
+Init sv-own2, 12k steps batch 64, per-slot top-64 KL (precomputed teacher targets,
+teacher_targets.py) + CE anchor, self-recursive carrier. Held-out 45 docs, 12,112
+positions, SELF-drafting chain eval (engine regime):
+
+| head | slot0 | slot1 | slot2 | slot3 | chain |
+|---|---|---|---|---|---|
+| engine teacher | 0.853 | 0.694 | 0.570 | 0.378 | 0.593 |
+| sv-chain | 0.679 | 0.563 | 0.468 | 0.405 | 0.449 |
+| sv-own2 (pre-chain) | 0.636 | 0.167 | 0.051 | 0.021 | 0.196 |
+
+- Slots 1-3 from dead to strong; slot-3 ABOVE teacher (student trained for the
+  approximate-carrier regime the teacher only encounters at inference).
+- Chain acceptance 76% of teacher at ~13% draft compute; slot0 80%.
+- Distillation-from-the-head vindicated: same data, same arch, the copied logits are
+  what moved slot0 (+4.3pts) and unlocked the chain.
