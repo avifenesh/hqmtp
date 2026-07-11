@@ -41,7 +41,19 @@ Chain curve per 1k steps: .075 .129 .199 .270 .316 .339 .379 .405 .434 .444 .448
   to: generate own output → copy teacher logits → distill. One stage.
 - Slot3 0.425 vs teacher 0.470 — student within .045 of teacher at depth.
 
-## Next
+## CE reinforcement on top (sv-kd-ce)
 
-CE-reinforcement stage on top (sv-kd-ce: init sv-kd-naked, beta 1.0 alpha 0,
-lr 1e-4, 4k steps) — tests "kd then re-inforce with ce". Results appended below.
+Init sv-kd-naked, beta 1.0 alpha 0, lr 1e-4, 4k steps ("kd then re-inforce with ce"):
+
+| ckpt | slot0 | slot1 | slot2 | slot3 | chain |
+|---|---|---|---|---|---|
+| naked KD 12k | 0.656 | 0.563 | 0.488 | 0.425 | 0.449 |
+| **+ CE 4k (sv-kd-ce)** | 0.665 | 0.570 | 0.500 | 0.459 | **0.457** |
+
+Curve: 0.427 (dip — CE disrupts KD solution) → 0.444 → 0.453 → 0.457. New best,
+77% of teacher. Slot3 within 0.011 of teacher (0.459 vs 0.470); remaining gap
+concentrated in slot0 (0.665 vs 0.740).
+
+**Recipe locked: naked KD → CE reinforce.** Beats CE→KD staging on every slot at
+2/3 the steps. Next levers: longer KD before CE (12k curve was LR-limited, not
+capacity-limited), more own-output data, wider student block.
