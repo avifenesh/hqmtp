@@ -57,3 +57,18 @@ concentrated in slot0 (0.665 vs 0.740).
 **Recipe locked: naked KD → CE reinforce.** Beats CE→KD staging on every slot at
 2/3 the steps. Next levers: longer KD before CE (12k curve was LR-limited, not
 capacity-limited), more own-output data, wider student block.
+
+## Longer KD: 24k naked KD → CE 4k (sv-kd24-ce)
+
+Same recipe, doubled KD schedule:
+
+| ckpt | slot0 | slot1 | slot2 | slot3 | chain |
+|---|---|---|---|---|---|
+| teacher | 0.740 | 0.598 | 0.520 | 0.470 | 0.593 |
+| naked KD 24k | 0.706 | 0.598 | 0.527 | 0.448 | 0.490 |
+| **+ CE 4k (sv-kd24-ce)** | **0.708** | **0.611** | **0.548** | **0.477** | **0.507** |
+
+**Chain 0.507 = 85.5% of teacher. Slots 1–3 all EXCEED teacher** (+.013/+.028/+.007).
+Remaining gap = slot0 only (0.708 vs 0.740); chain compounds slot0 misses.
+KD curve near-saturated at 24k (last 6k: 0.485→0.487→0.490) — steps lever spent;
+slot0 closes via more own-output data or wider student block.
