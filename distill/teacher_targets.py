@@ -107,7 +107,8 @@ def main():
     dev = "cuda"
     T = TeacherHead(interleaved_rope=True)
     from transformers import AutoTokenizer
-    tok = AutoTokenizer.from_pretrained("/data/ai-ml/hf-models/qwen35-9b-hf")
+    tok = AutoTokenizer.from_pretrained(
+        os.environ.get("HQMTP_TOK", "/data/ai-ml/hf-models/qwen35-9b-hf"))
 
     metas = sorted(glob.glob(f"{args.data_dir}/*.hiddens.meta.json"))
     done = 0

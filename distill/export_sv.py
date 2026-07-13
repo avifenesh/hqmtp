@@ -41,7 +41,7 @@ HD = 256
 N_Q = 8
 N_KV = 2
 D_S = 2048
-D = 4096
+D = 4096          # n_embd of the TARGET model (--d overrides: 27B = 5120)
 D_FF = 6144
 
 
@@ -71,7 +71,10 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--no-permute", action="store_true", help="debug: skip neox permute")
     ap.add_argument("--f16", action="store_true", help="debug: F16 instead of Q8_0")
+    ap.add_argument("--d", type=int, default=D, help="target n_embd (27B: 5120)")
     args = ap.parse_args()
+    global D
+    D = args.d
 
     sd = torch.load(args.ckpt, map_location="cpu", weights_only=False)["state"]
     hot = torch.load(args.hot, weights_only=False)["hot_ids"].to(torch.int32)

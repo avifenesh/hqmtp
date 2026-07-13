@@ -23,8 +23,9 @@ import urllib.request
 
 from chat_proxy import build_template
 
-TEMPLATE = "/data/ai-ml/hf-models/qwen35-9b-hf/chat_template.jinja"
-SERVER = "http://127.0.0.1:8014"
+TEMPLATE = os.environ.get("HQMTP_TEMPLATE",
+                          "/data/ai-ml/hf-models/qwen35-9b-hf/chat_template.jinja")
+SERVER = os.environ.get("HQMTP_SERVER", "http://127.0.0.1:8014")
 
 FOLLOWUPS = [
     "Now improve your answer: fix any mistake and make it more concrete.",

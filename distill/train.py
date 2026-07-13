@@ -198,7 +198,8 @@ def main():
     for p in T.parameters():
         p.requires_grad_(False)
     from transformers import AutoTokenizer
-    tok = AutoTokenizer.from_pretrained("/data/ai-ml/hf-models/qwen35-9b-hf")
+    tok = AutoTokenizer.from_pretrained(
+        os.environ.get("HQMTP_TOK", "/data/ai-ml/hf-models/qwen35-9b-hf"))
     # glob COMPLETED extractions only (meta written last — in-flight .hiddens files race)
     metas = sorted(glob.glob(f"{args.data_dir}/{args.glob}.meta.json")) or \
             sorted(glob.glob(f"{args.data_dir}/{args.glob}"))
@@ -208,7 +209,7 @@ def main():
 
     if args.student == "sv":
         hot = torch.load(args.hot, weights_only=False)["hot_ids"]
-        S = StudentSV(hot, big_lm_head=T.lm_head).to(dev)
+        S = StudentSV(hot, big_lm_head=T.lm_head, d=T.embed.shape[1]).to(dev)
         # full-id -> draft-idx map (-1 = out of hot set; CE masks those positions)
         t2d = torch.full((T.lm_head.shape[0],), -1, dtype=torch.long, device=dev)
         t2d[hot.to(dev)] = torch.arange(len(hot), device=dev)

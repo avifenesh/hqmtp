@@ -21,7 +21,7 @@ import os
 import torch
 from transformers import AutoTokenizer
 
-BASE = "/data/ai-ml/hf-models/qwen35-9b-hf"
+BASE = os.environ.get("HQMTP_TOK", "/data/ai-ml/hf-models/qwen35-9b-hf")
 
 
 def main():

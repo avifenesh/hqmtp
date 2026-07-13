@@ -79,7 +79,8 @@ def main():
     ap.add_argument("--ckpt", nargs="*", default=[])
     args = ap.parse_args()
     from transformers import AutoTokenizer
-    tok = AutoTokenizer.from_pretrained("/data/ai-ml/hf-models/qwen35-9b-hf")
+    tok = AutoTokenizer.from_pretrained(
+        os.environ.get("HQMTP_TOK", "/data/ai-ml/hf-models/qwen35-9b-hf"))
     T = TeacherHead(interleaved_rope=True)
 
     docs = []
@@ -106,9 +107,10 @@ def main():
           f"  chain {eng_chain/(eng_n*SLOTS):.3f}")
     for c in args.ckpt:
         ck = torch.load(c, map_location="cuda", weights_only=False)
-        hot = torch.load("/opt/dlami/nvme/hqmtp-data2/hot32k.pt",
+        hot = torch.load(os.environ.get("HQMTP_HOT",
+                         "/opt/dlami/nvme/hqmtp-data2/hot32k.pt"),
                          weights_only=False)["hot_ids"]
-        S = StudentSV(hot).cuda()
+        S = StudentSV(hot, d=T.embed.shape[1]).cuda()
         S.load_state_dict(ck["state"])
         S.eval()
         r, cl = chain_eval(S, T, docs, args.window)

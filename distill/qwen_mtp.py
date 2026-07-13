@@ -16,8 +16,11 @@ import os
 import torch
 import torch.nn.functional as F
 
-STCT_DIR = "/data/ai-ml/hf-models/qwen35-9b-nvfp4-st-ct"
-BASE_CFG = "/data/ai-ml/hf-models/qwen35-9b-hf/config.json"
+# model-generic: point at another checkpoint (e.g. the 27B) via env
+STCT_DIR = os.environ.get("HQMTP_TEACHER_DIR",
+                          "/data/ai-ml/hf-models/qwen35-9b-nvfp4-st-ct")
+BASE_CFG = os.environ.get("HQMTP_BASE_CFG",
+                          "/data/ai-ml/hf-models/qwen35-9b-hf/config.json")
 
 
 def _load_tensors(prefixes, model_dir=STCT_DIR):
@@ -46,14 +49,16 @@ class TeacherHead(torch.nn.Module):
 
     def __init__(self, device="cuda", dtype=torch.bfloat16, interleaved_rope=False):
         super().__init__()
-        cfg = json.load(open(BASE_CFG))["text_config"]
+        top = json.load(open(BASE_CFG))
+        cfg = top.get("text_config", top)
         self.eps = cfg["rms_norm_eps"]
-        self.n_q = cfg["num_attention_heads"]        # 16
+        self.n_q = cfg["num_attention_heads"]        # 9B: 16, 27B: 24
         self.n_kv = cfg["num_key_value_heads"]       # 4
         self.hd = cfg["head_dim"]                    # 256
-        rp = cfg["rope_parameters"]
-        self.rot = int(self.hd * rp.get("partial_rotary_factor", 1.0))  # 64
-        self.theta = float(rp["rope_theta"])
+        rp = cfg.get("rope_parameters") or cfg
+        self.rot = int(self.hd * rp.get("partial_rotary_factor",
+                                        cfg.get("partial_rotary_factor", 1.0)))
+        self.theta = float(rp.get("rope_theta") or 1e7)
         self.interleaved_rope = interleaved_rope
         t = _load_tensors(("mtp.", "lm_head.", "model.language_model.embed_tokens."))
         g = lambda n: t[n].to(device=device, dtype=dtype)
