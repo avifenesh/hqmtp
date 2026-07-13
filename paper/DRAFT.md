@@ -26,6 +26,15 @@ student 225MB (Q8_0). [5-arm e2e frontier table: final battery pending]
 Upstream path: trim+prune is directly implementable in llama.cpp (issue #25187
 follow-through) — zero-training, one-file draft replacement.
 
+DEPLOYMENT FRAMING (primary audience = LOCAL/CONSUMER inference, 2026-07-13):
+on a 24GB card running llama.cpp, the MTP draft is a SEPARATE GGUF with its own
+full-vocab head (1-2GB resident). Trim+prune returns 1-1.7GB — thousands of KV
+tokens, or the margin that fits a larger target quant at all — AND consumer cards
+(~1TB/s) are bandwidth-bound, so the -78% draft-read cut bites round time
+~directly. Zero training => any user applies it locally to any co-trained-MTP
+model. Server-class results in this paper (96GB, ~8TB/s, shared-lm_head engine)
+are the CONSERVATIVE case: bandwidth-only win, memory-neutral.
+
 ## Abstract (draft)
 
 Models shipping co-trained multi-token-prediction (MTP) heads pay a fixed draft cost:
