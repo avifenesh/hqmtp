@@ -40,6 +40,8 @@ def main():
     ap.add_argument("--model", required=True)
     ap.add_argument("--hot", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--ffn-keep", help="pt file with LongTensor channel idx to keep "
+                    "(activation-ranked) — the trim++ arm: physical FFN prune, no training")
     args = ap.parse_args()
 
     cfg = json.load(open(os.path.join(args.model, "config.json")))
@@ -64,7 +66,7 @@ def main():
     w.add_uint32("qwen35.attention.head_count_kv", n_kv)
     w.add_uint32("qwen35.attention.key_length", hd)
     w.add_uint32("qwen35.attention.value_length", hd)
-    w.add_uint32("qwen35.feed_forward_length", t[L + "mlp.gate_proj.weight"].shape[0])
+    w.add_uint32("qwen35.feed_forward_length", t[L + "mlp.gate_proj.weight"].shape[0])  # dims from tensors at load; kv only informational
     w.add_uint32("qwen35.vocab_size", t["lm_head.weight"].shape[0])
     w.add_uint32("qwen35.context_length", 262144)
     w.add_float32("qwen35.attention.layer_norm_rms_epsilon", tc["rms_norm_eps"])
@@ -92,9 +94,16 @@ def main():
     f32("blk.0.attn_q_norm.weight", gn(L + "self_attn.q_norm.weight"))
     f32("blk.0.attn_k_norm.weight", gn(L + "self_attn.k_norm.weight"))
     f32("blk.0.post_attention_norm.weight", gn(L + "post_attention_layernorm.weight"))
-    q8("blk.0.ffn_gate.weight", g(L + "mlp.gate_proj.weight"))
-    q8("blk.0.ffn_up.weight", g(L + "mlp.up_proj.weight"))
-    q8("blk.0.ffn_down.weight", g(L + "mlp.down_proj.weight"))
+    wg, wu, wd = g(L + "mlp.gate_proj.weight"), g(L + "mlp.up_proj.weight"), \
+        g(L + "mlp.down_proj.weight")
+    if args.ffn_keep:
+        keep = torch.load(args.ffn_keep, weights_only=False)
+        keep = keep[: (len(keep) // 32) * 32].sort().values      # Q8_0 %32 alignment
+        wg, wu, wd = wg[keep], wu[keep], wd[:, keep]
+        print(f"ffn pruned to {len(keep)} channels")
+    q8("blk.0.ffn_gate.weight", wg)
+    q8("blk.0.ffn_up.weight", wu)
+    q8("blk.0.ffn_down.weight", wd)
     f32("blk.0.nextn.shared_head_norm.weight", gn("mtp.norm.weight"))
     q8("output.weight", g("lm_head.weight")[hot.long()])
     w.add_tensor("d2t", hot.numpy())
