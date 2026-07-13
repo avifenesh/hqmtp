@@ -1,6 +1,20 @@
-# Replacing the Co-Trained MTP Head: Distilling a Small-Vocabulary Draft Head that Beats its Teacher End-to-End
+# How Much Draft Head Do You Need? Trim, Prune, Distill — the Cost/Acceptance Frontier of a Co-Trained MTP Head
 
 *Working draft skeleton — numbers sourced from results/. TODO slots marked.*
+
+REFRAME (2026-07-13, post utilization-probe): the paper is a FRONTIER study, not a
+single-method paper. Three escalating interventions on the co-trained head, all
+verify-lossless (d2t + full-vocab verify):
+  1. TRIM (zero training): hot-32k lm_head — cuts ~70% of draft reads, keeps
+     natural-block acceptance. Strong baseline (llama.cpp's +1-3% does NOT
+     transfer to a fast engine).
+  2. TRIM++ (zero training): + activation-ranked FFN-channel prune — the block is
+     over-provisioned (25% of channels keep 97.1% slot0); another ~30% of reads.
+  3. DISTILL (ours): half-width block via serving-regime own-output chain KD — the
+     last ~2x of block cost, deep-slot acceptance ABOVE teacher, wins at long
+     context/high K; pays a short-context acceptance tax until data closes it.
+Draft artifact sizes: frtrim 401MB / trimplus50 321MB / trimplus25 281MB /
+student 225MB (Q8_0). [5-arm e2e frontier table: final battery pending]
 
 ## Abstract (draft)
 
