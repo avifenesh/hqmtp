@@ -68,3 +68,20 @@ Clean e2e battery (512 gens, K=4, tok/s vs 136 plain):
 with depth, where spec matters most.** Remaining acceptance-side gaps: short-ctx
 (structural), code register, long+sampled tail. Longchat-greedy self-consistency
 FAIL reproduces on BOTH arms — engine-lane issue, arm-independent.
+
+## MT-Bench 80-question sweep (2026-07-13, K=4, 256-token gens) — RATIO-ONLY
+
+GPU contention artifact (27B corpus generation shared the card — see repo log):
+absolutes invalid, within-run gen/spec ratios approximately fair. Clean pass queued.
+
+| arm | greedy acc | greedy x | t0.7 acc | t0.7 x |
+|---|---|---|---|---|
+| natural | 50.1% | 1.59x | 45.5% | 0.92x |
+| FR-trim 32k (in-engine gather) | 46.9% | 1.51x | 45.8% | 1.00x |
+| student sv2 | 20.8% | 0.98x | 19.0% | 0.66x |
+
+Readings: (a) FR-trim is a STRONG baseline in bw24 (llama.cpp's +1-3% does not
+transfer — bw24's draft loop is lm_head-bound enough that trim pays); (b) MT-Bench
+= short prompts, the student's weak regime — matches the short-ctx bucket story;
+(c) sampled spec underperforms on short generations for ALL arms here (0.66-1.00x)
+— overhead + acceptance; needs the clean pass before conclusions.
