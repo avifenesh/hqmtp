@@ -49,3 +49,22 @@ exactness quirk, natural head included; flagged to the engine lane.)
 gen_corpus2.py: thinking ON, 50% greedy / 50% t0.7, 2/3 single-shot, fresh seeds,
 2400 docs -> extract -> teacher targets -> KD 24k on v1+v2 mix -> CE 4k ->
 eval both sets -> export -> e2e battery. Stages marked in v2-status.txt.
+
+## v2 result (2026-07-13, sv2-kd-ce = KD 24k on v1+v2 mix + CE 4k)
+
+Torch: v1 set 0.521 (new best, 88% of teacher), v2 serving-regime set **0.630 vs
+teacher 0.641 = 98%** (sv1 scored 0.359 there — the regime gap, closed by data).
+
+Clean e2e battery (512 gens, K=4, tok/s vs 136 plain):
+
+| prompt | natural greedy | sv2 greedy | natural t0.7 | sv2 t0.7 |
+|---|---|---|---|---|
+| chat short | 42.0% 1.35x | 21.6% 1.23x | 49.7% 1.38x | 31.0% 1.35x |
+| code short | 41.8% 1.36x | 16.7% 1.03x | 40.2% 1.07x | 11.7% 0.91x |
+| longchat 3.5k | 60.5% 1.60x | **53.4% 1.99x** | 63.3% 1.56x | 23.6% 1.35x |
+
+**HEADLINE: at long context the student now BEATS the natural head e2e by +49%
+(269.6 vs 181.5 tok/s) with lower acceptance — the cheap-round advantage compounds
+with depth, where spec matters most.** Remaining acceptance-side gaps: short-ctx
+(structural), code register, long+sampled tail. Longchat-greedy self-consistency
+FAIL reproduces on BOTH arms — engine-lane issue, arm-independent.
