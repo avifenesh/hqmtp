@@ -85,3 +85,24 @@ transfer — bw24's draft loop is lm_head-bound enough that trim pays); (b) MT-B
 = short prompts, the student's weak regime — matches the short-ctx bucket story;
 (c) sampled spec underperforms on short generations for ALL arms here (0.66-1.00x)
 — overhead + acceptance; needs the clean pass before conclusions.
+
+## Utilization probe (2026-07-13): the natural block is NOT all in use
+
+User question ("how do we know all pieces are in use?") -> activation-mass probe +
+physical ablation, zero training, serving-regime eval (slot0, windowed torch):
+
+| cut | slot0 | % of natural |
+|---|---|---|
+| none | 0.886 | 100% |
+| FFN keep 50% | 0.872 | 98.4% |
+| FFN keep 25% | 0.860 | 97.1% |
+| zero 2 weakest heads | 0.885 | 99.9% |
+| zero 8 of 16 heads | 0.852 | 96.2% |
+| FFN 25% + 2 heads | 0.860 | 97.1% |
+
+Head-mass profile: heads 8-11 carry ~0.3 relative mass. => "trim++" arm: vocab trim
++ activation-ranked FFN prune, exported physically (trimplus25 281MB / trimplus50
+321MB vs frtrim 401MB vs student 225MB draft files). No engine change needed (n_ff
+from tensor dims). 5-arm final battery queued: natural / frtrim / trimplus25 /
+trimplus50 / student. Paper frame shifts to a cost/acceptance FRONTIER: trim ->
+prune -> distill; distillation buys the last ~2x block cut + deep-slot chain gains.
