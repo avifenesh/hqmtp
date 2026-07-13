@@ -2,19 +2,29 @@
 
 *Working draft skeleton — numbers sourced from results/. TODO slots marked.*
 
-REFRAME (2026-07-13, post utilization-probe): the paper is a FRONTIER study, not a
-single-method paper. Three escalating interventions on the co-trained head, all
-verify-lossless (d2t + full-vocab verify):
-  1. TRIM (zero training): hot-32k lm_head — cuts ~70% of draft reads, keeps
-     natural-block acceptance. Strong baseline (llama.cpp's +1-3% does NOT
-     transfer to a fast engine).
-  2. TRIM++ (zero training): + activation-ranked FFN-channel prune — the block is
-     over-provisioned (25% of channels keep 97.1% slot0); another ~30% of reads.
-  3. DISTILL (ours): half-width block via serving-regime own-output chain KD — the
-     last ~2x of block cost, deep-slot acceptance ABOVE teacher, wins at long
-     context/high K; pays a short-context acceptance tax until data closes it.
+REFRAME (2026-07-13, post utilization-probe): the paper is a FRONTIER study with
+TWO method contributions. Three escalating interventions on the co-trained head,
+all verify-lossless (d2t + full-vocab verify):
+  1. TRIM (zero training, known — FR-Spec): hot-32k lm_head — cuts ~70% of draft
+     reads, keeps natural-block acceptance. Strong baseline (llama.cpp's +1-3%
+     does NOT transfer to a fast engine).
+  2. TRIM+PRUNE (zero training, CONTRIBUTION #1 — new method): activation-ranked
+     FFN-channel prune of the draft BLOCK, calibrated by forward passes on ~12
+     own-output docs, no gradients. Key insight: speculative drafts are
+     error-tolerant BY CONSTRUCTION — verify catches every mistake, so pruning
+     errors cost latency, never correctness; a draft head tolerates cuts a base
+     model cannot. 97.1% of acceptance at ~22% of the natural draft-step reads.
+     VRAM: in separate-draft deployments (llama.cpp external MTP GGUFs, EAGLE
+     drafters) the resident draft shrinks 1.3GB -> 280MB (-78%); in
+     shared-lm_head engines (bw24) the win is bandwidth-only (~neutral memory).
+  3. DISTILL (CONTRIBUTION #2): half-width block via serving-regime own-output
+     chain KD — the last ~2x of block cost, deep-slot acceptance ABOVE teacher,
+     wins at long context/high K; pays a short-context acceptance tax until data
+     closes it.
 Draft artifact sizes: frtrim 401MB / trimplus50 321MB / trimplus25 281MB /
 student 225MB (Q8_0). [5-arm e2e frontier table: final battery pending]
+Upstream path: trim+prune is directly implementable in llama.cpp (issue #25187
+follow-through) — zero-training, one-file draft replacement.
 
 ## Abstract (draft)
 
