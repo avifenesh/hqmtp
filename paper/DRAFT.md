@@ -195,8 +195,11 @@ Per-slot: student EXCEEDS teacher at slots 1-3 on both sets (e.g. v2 set slot3
   excluded from claims.
 
 ## 7. Future work
-- EAGLE-3-style from-scratch baseline at matched budget (B0 control exists at 5k
-  steps: 0.373 vs sv 0.527 full-vocab — needs a full-budget rerun).
+(EAGLE-class external drafters are NOT a baseline here by design: co-trained MTP
+heads are established as stronger drafters than external retrofits — the head
+trains jointly with the trunk on the trunk's distribution. This paper takes that
+as its premise and asks how cheap the co-trained head can be made; our B0
+from-scratch control at equal budget (0.373 vs 0.527) confirms the direction.)
 - Draft-side temperature knob in-engine (exactness-preserving).
 - Quantized-base variant (the NVFP4 thread: base quantization does NOT degrade the
   head — VERDICT-nvfp4-final.md — so the student ports).
