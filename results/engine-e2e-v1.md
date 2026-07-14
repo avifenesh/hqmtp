@@ -154,3 +154,26 @@ the student's serving-mode long-ctx wins despite lower slot0.
 Verdicts: trim = production default; prune = VRAM lever with a chain tax (report
 per-slot, not slot0); distill = long-ctx/sampled specialist + only path below
 trim's cost floor. Seeds: +-2pts acc, +-0.04x.
+
+## Root cause of the prune live-tax (2026-07-15): the tail IS the generalization
+
+Carrier-compounding theory REFUTED: torch 4-slot self-draft chain on pruned teacher
+= 0.710-0.715 vs full 0.735 (97%); engine FORCED replay agrees (tp25 = 96.7% of
+frtrim). Export + engine exonerated. Robust 100-doc max-over-docs calibration:
+identical rankings (88% overlap), identical live acceptance (41.7% vs 41.3%).
+
+Decisive cell — forced replay ON LIVE-GENERATED text:
+| arm | corpus text chain | live text chain |
+|---|---|---|
+| frtrim | 0.945 | 0.427 |
+| trimplus25 | 0.914 (97% of frtrim) | 0.290 (68% of frtrim) |
+
+Pruning's tax is DISTRIBUTION-DEPENDENT: ~3% in-calibration-distribution, ~35%
+relative on fresh live content. The low-mass channels are not dead — they are the
+long tail that fires on unfamiliar content. **Over-provisioning is the
+generalization margin.** Same mechanism explains the distilled student's fresh-
+topic/short-ctx weakness: every FUNCTION cut (prune or distill) is brittle exactly
+off-distribution; vocab trim is robust because it removes no computation.
+
+Paper conclusion (final): draft-cost cuts are free until you touch function;
+function cuts pay in the tokens you haven't seen.
