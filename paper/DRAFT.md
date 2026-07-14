@@ -22,7 +22,21 @@ all verify-lossless (d2t + full-vocab verify):
      wins at long context/high K; pays a short-context acceptance tax until data
      closes it.
 Draft artifact sizes: frtrim 401MB / trimplus50 321MB / trimplus25 281MB /
-student 225MB (Q8_0). [5-arm e2e frontier table: final battery pending]
+student 225MB (Q8_0).
+
+FRONTIER RESULTS (final, 2026-07-15 — results/engine-e2e-v1.md holds all tables):
+- 9B MT-Bench (short): frtrim 1.86x > trimplus50 1.72x > natural 1.59x =
+  trimplus25 1.58x > student 1.25x. Seeds +-0.04x.
+- 9B longchat greedy: frtrim 2.15x > student 2.01x > trimplus50 1.76x > natural
+  1.71x. K=8 counterproductive everywhere.
+- 27B: frtrim27 2.57x greedy; STUDENT SAMPLED 2.68x = best 27B cell; probe
+  replicates over-provisioning (FFN 25% = 98.5% slot0).
+- MECHANISM (section-worthy): pruning's slot0 (97-98.5%) overstates live chain
+  acceptance (41-45% vs frtrim 63%) — FFN pruning distorts the h_nextn CARRIER,
+  errors compound down the chain. Distillation trains the carrier explicitly
+  (self-recursive chain KD) — the only intervention that holds deep slots.
+- Verdicts: trim = production default; prune = VRAM lever with a chain tax;
+  distill = serving-mode long-ctx specialist + only path below trim's cost floor.
 Upstream path: trim+prune is directly implementable in llama.cpp (issue #25187
 follow-through) — zero-training, one-file draft replacement.
 
