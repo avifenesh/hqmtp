@@ -71,10 +71,9 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--no-permute", action="store_true", help="debug: skip neox permute")
     ap.add_argument("--f16", action="store_true", help="debug: F16 instead of Q8_0")
-    ap.add_argument("--d", type=int, default=D, help="target n_embd (27B: 5120)")
+    ap.add_argument("--d", type=int, default=4096, help="target n_embd (27B: 5120)")
     args = ap.parse_args()
-    global D
-    D = args.d
+    emb_len = args.d
 
     sd = torch.load(args.ckpt, map_location="cpu", weights_only=False)["state"]
     hot = torch.load(args.hot, weights_only=False)["hot_ids"].to(torch.int32)
@@ -93,7 +92,7 @@ def main():
     w = gguf.GGUFWriter(args.out, "qwen35")
     w.add_uint32("qwen35.block_count", 1)
     w.add_uint32("qwen35.nextn_predict_layers", 1)
-    w.add_uint32("qwen35.embedding_length", D)
+    w.add_uint32("qwen35.embedding_length", emb_len)
     w.add_uint32("qwen35.attention.head_count", N_Q)
     w.add_uint32("qwen35.attention.head_count_kv", N_KV)
     w.add_uint32("qwen35.attention.key_length", HD)
