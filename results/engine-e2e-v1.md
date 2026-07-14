@@ -125,3 +125,32 @@ E2E (plain 47.0 tok/s, K=4):
 strength. Does NOT replicate: the 9B sampled collapse (9B's KD mixed v1-regime
 data; 27B trained on serving-regime corpus only) and the 9B longchat-greedy
 self-consistency FAIL (all 27B cells PASS).
+
+## FINAL frontier tables (2026-07-15, clean baselines 137.7 tok/s, K=4)
+
+MT-Bench 80 prompts (short regime):
+| arm | greedy acc -> x | t0.7 acc -> x (3 seeds) |
+|---|---|---|
+| natural | 50.1% -> 1.59x | 45.5-49.3% -> 1.38-1.45x |
+| frtrim | 47.0% -> **1.86x** | 43.8-45.9% -> 1.68-1.72x |
+| trimplus50 | 40.1% -> 1.72x | 37.3-38.9% -> 1.54-1.58x |
+| trimplus25 | 34.5% -> 1.58x | 32.5-33.1% -> 1.43-1.45x |
+| student sv2 | 20.8% -> 1.25x | 18.4-19.0% -> 1.11-1.13x |
+
+Longchat 3.5k greedy K=4: frtrim 63.4% 292.9 (2.15x) > student 53.4% 273.9 (2.01x)
+> trimplus50 45.3% 240.5 (1.76x) > natural 59.9% 234.4 (1.71x) > trimplus25 41.3%
+230.2 (1.69x). K=8 counterproductive on all arms (0.69-1.01x; student degrades least).
+
+27B extras: probe replicates over-provisioning HARDER (FFN 25% = 98.5% slot0);
+e2e longchat greedy: frtrim27 66.1% 2.57x, trimplus25-27b 57.6% 2.38x (vs natural
+2.62x, student sampled 2.68x = best 27B cell).
+
+KEY MECHANISM FINDING: pruning's teacher-forced slot0 (97-98.5%) massively
+overstates its LIVE chain acceptance (41-45% vs frtrim 63%) — FFN pruning distorts
+the h_nextn carrier and errors COMPOUND down the chain. Distillation trains the
+carrier (self-recursive chain KD) — the only method that holds deep slots, hence
+the student's serving-mode long-ctx wins despite lower slot0.
+
+Verdicts: trim = production default; prune = VRAM lever with a chain tax (report
+per-slot, not slot0); distill = long-ctx/sampled specialist + only path below
+trim's cost floor. Seeds: +-2pts acc, +-0.04x.
