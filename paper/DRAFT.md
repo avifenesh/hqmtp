@@ -31,12 +31,18 @@ FRONTIER RESULTS (final, 2026-07-15 — results/engine-e2e-v1.md holds all table
   1.71x. K=8 counterproductive everywhere.
 - 27B: frtrim27 2.57x greedy; STUDENT SAMPLED 2.68x = best 27B cell; probe
   replicates over-provisioning (FFN 25% = 98.5% slot0).
-- MECHANISM (section-worthy): pruning's slot0 (97-98.5%) overstates live chain
-  acceptance (41-45% vs frtrim 63%) — FFN pruning distorts the h_nextn CARRIER,
-  errors compound down the chain. Distillation trains the carrier explicitly
-  (self-recursive chain KD) — the only intervention that holds deep slots.
-- Verdicts: trim = production default; prune = VRAM lever with a chain tax;
-  distill = serving-mode long-ctx specialist + only path below trim's cost floor.
+- MECHANISM (the paper's core, revised 2026-07-15): carrier-compounding REFUTED
+  (torch + engine forced chains: pruned = 97% of full). The prune tax is
+  DISTRIBUTION-DEPENDENT: 3% in-calibration-distribution, ~35% relative on live
+  fresh content; calibration breadth does not help. The low-mass FFN channels are
+  the LONG TAIL that fires on unfamiliar content — over-provisioning IS the
+  generalization margin. The same mechanism explains the distilled student's
+  fresh-topic/short-ctx weakness. ROBUSTNESS LAW: draft-cost cuts are free until
+  you touch function; function cuts (prune, distill) pay in the tokens you
+  haven't seen. Vocab trim is robust because it removes no computation.
+- Verdicts: trim = production default (robust, biggest e2e win); prune = VRAM
+  lever, honest only with OOD-tax disclosure; distill = serving-mode long-ctx
+  specialist (best 27B cell) whose data-regime coverage bounds its robustness.
 Upstream path: trim+prune is directly implementable in llama.cpp (issue #25187
 follow-through) — zero-training, one-file draft replacement.
 
