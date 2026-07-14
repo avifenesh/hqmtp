@@ -106,3 +106,22 @@ Head-mass profile: heads 8-11 carry ~0.3 relative mass. => "trim++" arm: vocab t
 from tensor dims). 5-arm final battery queued: natural / frtrim / trimplus25 /
 trimplus50 / student. Paper frame shifts to a cost/acceptance FRONTIER: trim ->
 prune -> distill; distillation buys the last ~2x block cut + deep-slot chain gains.
+
+## 27B replication (2026-07-14, sv27-kd-ce: KD 24k* + CE 4k, serving-regime corpus)
+
+*KD restarted from step 12k after a disk-full crash (12k + 12k @ lr 2e-4).
+
+Torch chain (27B serving-regime eval): teacher 0.662, student 0.605 = 91%.
+E2E (plain 47.0 tok/s, K=4):
+
+| prompt | nat greedy | nat t0.7 | student greedy | student t0.7 |
+|---|---|---|---|---|
+| chat | 45.2% 1.82x | 40.5% 1.65x | 13.9% 1.17x | 13.0% 1.12x |
+| code | 59.7% 2.18x | 52.1% 1.92x | 23.3% 1.45x | 16.7% 1.22x |
+| longchat | 77.6% 2.62x | 79.1% 2.56x | 41.9% 1.98x | **69.0% 2.68x** |
+
+**Student BEATS natural at long-ctx SAMPLED — the serving mode — 2.68x vs 2.56x
+(125.6 vs 120.3 tok/s) at 69% acceptance.** Replicates: short-ctx tax, long-ctx
+strength. Does NOT replicate: the 9B sampled collapse (9B's KD mixed v1-regime
+data; 27B trained on serving-regime corpus only) and the 9B longchat-greedy
+self-consistency FAIL (all 27B cells PASS).
