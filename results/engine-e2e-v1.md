@@ -177,3 +177,15 @@ off-distribution; vocab trim is robust because it removes no computation.
 
 Paper conclusion (final): draft-cost cuts are free until you touch function;
 function cuts pay in the tokens you haven't seen.
+
+## Adaptive (online) pruning — tested, negative (2026-07-15)
+
+User hypothesis: learn the prune mask from live traffic instead of offline calib.
+Simulated deployment on a 24-doc fresh-topic stream (served in order, EMA mask
+rebuilt from previously-served docs only): adaptive == static within noise
+(0.8456 vs 0.8442 slot0); mask calibrated ON the stream itself == corpus mask
+(0.8542 both, converged half). Mechanism: activation-mass ranking is dominated by
+common channels regardless of calibration source; the OOD-critical tail channels
+are rare-firing BY DEFINITION and never enter a top-25% cut. Learning them needs
+per-channel acceptance gradients — i.e. training. The zero-training frontier is
+closed: trim robust; prune carries an irreducible OOD chain tax.
