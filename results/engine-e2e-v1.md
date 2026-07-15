@@ -189,3 +189,16 @@ common channels regardless of calibration source; the OOD-critical tail channels
 are rare-firing BY DEFINITION and never enter a top-25% cut. Learning them needs
 per-channel acceptance gradients — i.e. training. The zero-training frontier is
 closed: trim robust; prune carries an irreducible OOD chain tax.
+
+## Vocab-conditioned pruning ("mark functions orphaned by the trim") — tested, negative (2026-07-15)
+
+User hypothesis: channels serving TRIMMED (cold) tokens are dead by construction
+post-trim — rank by hot-logit energy ratio ||lm_head[hot] w_down[:,i]||^2 /
+||lm_head w_down[:,i]||^2 (weights-only). Measured: the ratio is UNIFORM across
+all 12288 channels (median 0.135, p10-p90 0.116-0.159 ~= the hot set's 13% vocab
+share). No channel is vocabulary-specialized — FFN features live in superposition
+and every channel's output moves hot and cold logits alike. Pruning by the ratio
+is WORSE than mass (93.8% vs 97.1% in-dist); combined score adds noise-level gains.
+Conclusion: vocab trim orphans OUTPUTS, never COMPUTATION — the same fact that
+makes trim robust makes it create zero pruning headroom. The OOD-critical tail
+channels are rare-CONTENT specialists whose outputs still land on hot tokens.
