@@ -35,3 +35,15 @@ Principles (each measured, results/engine-e2e-v1.md):
 
 Expected envelope from measured cells: ~1.9-2.7x over plain decode across the
 request mix, vs 1.6-2.6x natural-only and 1.9-2.2x frtrim-only.
+
+## v1 implemented (2026-07-16, bw24 PR #13)
+
+BW24_MTP_DRAFT2 second resident head + spec::pick_draft routing on (ctx len,
+sampled); scratch sized to the dispatched head; session geometry guard;
+BW24_DISPATCH{,_CTX,_LOG}. Validated on 27B: routing correct all cells,
+dispatched == standalone bit-for-bit, greedy-long via dispatch = 2.62x.
+
+Found in the process: engine regression (bw24 #12) — sampled x DraftGeom heads
+collapsed 69% -> 20% between f1395e90 and e1ef5ab (b-tier int4 window); frtrim
+sampled and student greedy unaffected. The dispatch payoff cell resumes when the
+engine lane fixes it; policy meanwhile: frtrim everywhere (still 1.86-2.6x).
