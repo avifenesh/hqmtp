@@ -263,3 +263,22 @@ back by halved reads. UNEXPECTED FINDING: NVFP4 stabilizes sampled trajectories
 (seed sd 1.2pts vs Q8's 7pts) — smoother quantization grid -> less trajectory
 sensitivity. Aggregate protocol validated: single-prompt sampled sd ±12pts ->
 20-prompt aggregate ±1.2pts (NVFP4) — reproduces across builds.
+
+## 27B strong battery (2026-07-17) — replication complete
+
+MT-Bench: natural 53.2% 2.02x | trim-Q8 50.4% 2.15x | trim-NVFP4 48.6% 2.15x
+  sampled: natural 1.81-1.82x | Q8 1.89-2.03x | NVFP4 1.96-2.02x
+Longset: natural 69.7% 2.42x | trim-Q8 69.5% 2.67x | **trim-NVFP4 67.5% 2.67x
+  (127.5 tok/s = fastest cell of the research; NVFP4 > Q8 outright at 27B)**
+  sampled: natural 2.15-2.31x | Q8 1.60-2.41x | NVFP4 2.01-2.44x (stabler again)
+
+Replicates 9B on every axis: trim free (-0.2pts long), 4-bit ~free, NVFP4
+preferred (speed at scale + sampled stability). Cross-model law: spec gains GROW
+with model size — NVFP4-trim 1.6-2.0x @9B -> 2.0-2.7x @27B, zero training,
+212MB/259MB draft files, verify-lossless. Independent convergence: engine lane's
+own-trim + NVFP4-head + q4_K-block arm beat its prior champion on BOTH axes
+(100.7 tok/s, 85.2% acc, K=3 interleaved) on a third config.
+
+EXPERIMENTAL PROGRAM COMPLETE for "Quantize the Draft": two models x two suites x
+multi-seed + third-config independent replication + mechanism theory (robustness
+law) + methodology (aggregate protocol). Remaining: prose.
