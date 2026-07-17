@@ -25,3 +25,19 @@ Verdict: **our combination is novel** — (smaller student ← co-trained MTP-he
 - The HF DFlash-on-Q4 report is the in-the-wild motivation anecdote.
 - Design debts: AdaSPEC masking (ablation flag), SlimSpec low-rank head (second
   compression axis), EAGLE-3 from-scratch baseline (control).
+
+## Quantized-draft prior art (searched 2026-07-18, post Q4/NVFP4 results)
+
+| work | what | overlap with ours |
+|---|---|---|
+| ML-SpecQD (arXiv 2503.13565, Intel, 2025-03) | MXFP4 direct-cast of the TARGET as plug-and-play draft + multi-level drafting; CPU; up to 2x | closest — "4-bit drafts viable, high acceptance" claim is THEIRS; draft = whole-model copy (GBs), no trim, no head, no mechanism |
+| QSpec (arXiv 2410.11305, 2024-10) | W4A4 drafts / W4A16 verify, same model | quant-scheme self-spec; already in map |
+| SpecDec meets Quantization (arXiv 2505.22179, 2025-05) | EAGLE-2 x quantized targets compatibility + hierarchical framework | evaluates spec ON quant models, not quantized drafters per se |
+
+POSITIONING CONSEQUENCE: cannot headline "quantize the draft" as new. Ours =
+(1) the OBJECT: co-trained MTP heads, trim x quant composed, 212MB w/ lossless
+d2t verify (their drafts are whole-model copies); (2) the MECHANISM: robustness
+law with prune/distill counterfactuals + OOD evidence — why precision is the only
+free knife; (3) NVFP4 + sampled-stabilization finding; (4) GPU production engine +
+scale law (2.67x @27B vs their CPU 2x). Title reverts toward the frontier study;
+ML-SpecQD/QSpec cited as precedent we extend and explain.
