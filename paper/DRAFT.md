@@ -29,8 +29,11 @@ FRONTIER RESULTS (final, 2026-07-15 — results/engine-e2e-v1.md holds all table
   trimplus25 1.58x > student 1.25x. Seeds +-0.04x.
 - 9B longchat greedy: frtrim 2.15x > student 2.01x > trimplus50 1.76x > natural
   1.71x. K=8 counterproductive everywhere.
-- 27B: frtrim27 2.57x greedy; STUDENT SAMPLED 2.68x = best 27B cell; probe
-  replicates over-provisioning (FFN 25% = 98.5% slot0).
+- 27B: frtrim27 2.57x greedy; probe replicates over-provisioning (FFN 25% =
+  98.5% slot0). RETRACTED (2026-07-17): the "student sampled 2.68x best cell" was
+  a single favorable seed — multi-seed spread 20-45% (mean ~33%, sd 12pts).
+  Single-prompt sampled cells are not point estimates (variance = the robustness
+  law per-trajectory); only greedy cells and multi-prompt/seed aggregates stand.
 - MECHANISM (the paper's core, revised 2026-07-15): carrier-compounding REFUTED
   (torch + engine forced chains: pruned = 97% of full). The prune tax is
   DISTRIBUTION-DEPENDENT: 3% in-calibration-distribution, ~35% relative on live
@@ -40,9 +43,12 @@ FRONTIER RESULTS (final, 2026-07-15 — results/engine-e2e-v1.md holds all table
   fresh-topic/short-ctx weakness. ROBUSTNESS LAW: draft-cost cuts are free until
   you touch function; function cuts (prune, distill) pay in the tokens you
   haven't seen. Vocab trim is robust because it removes no computation.
-- Verdicts: trim = production default (robust, biggest e2e win); prune = VRAM
-  lever, honest only with OOD-tax disclosure; distill = serving-mode long-ctx
-  specialist (best 27B cell) whose data-regime coverage bounds its robustness.
+- Verdicts (FINAL): if the model ships a co-trained MTP head — TRIM IT AND STOP
+  (frtrim >= student in every reliably-measured live cell). Prune = VRAM lever
+  with disclosed OOD tax. Distillation's domain: models WITHOUT a co-trained
+  head, heads broken by base quantization, and deep-slot/chain trainability —
+  the recipe builds heads at 91-98% of a co-trained teacher's chain acceptance
+  where no such teacher-quality head is available to trim.
 Upstream path: trim+prune is directly implementable in llama.cpp (issue #25187
 follow-through) — zero-training, one-file draft replacement.
 
