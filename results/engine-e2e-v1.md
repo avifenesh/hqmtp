@@ -202,3 +202,19 @@ is WORSE than mass (93.8% vs 97.1% in-dist); combined score adds noise-level gai
 Conclusion: vocab trim orphans OUTPUTS, never COMPUTATION — the same fact that
 makes trim robust makes it create zero pruning headroom. The OOD-critical tail
 channels are rare-CONTENT specialists whose outputs still land on hot tokens.
+
+## Sampled-cell variance correction (2026-07-17) — headline revision
+
+Multi-seed audit of single-prompt SAMPLED cells (27B longchat, student): seeds
+{7,17,27,37} -> 20.0/43.1/26.1/44.7% (mean ~33%, sd ~12pts). The 69% / 2.68x
+"best 27B cell" was a single favorable seed — RETRACTED as a point estimate.
+Eager==graph bit-identical; FA-kernel-flavor toggle alone moves the trajectory
+(37.6%) — content variance, the robustness law expressed per-trajectory. Greedy
+cells (deterministic) and MT-Bench sweeps (80-prompt x 3-seed aggregates) stand.
+
+Deployment verdict FINAL: frtrim >= student in every reliably-measured live cell
+for this model family — **if the model ships a co-trained MTP head: trim it and
+stop; no training**. The distillation recipe's value: models WITHOUT a co-trained
+head, heads broken by base quantization, and the science (deep-slot trainability,
+regime laws). bw24: dispatch PR #13 closed unmerged (owner call), #12 closed
+not-a-bug (multi-seed protocol note), DraftGeom (#7) stays.
