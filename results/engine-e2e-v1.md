@@ -218,3 +218,29 @@ stop; no training**. The distillation recipe's value: models WITHOUT a co-traine
 head, heads broken by base quantization, and the science (deep-slot trainability,
 regime laws). bw24: dispatch PR #13 closed unmerged (owner call), #12 closed
 not-a-bug (multi-seed protocol note), DraftGeom (#7) stays.
+
+## QUANTIZE THE DRAFT (2026-07-17) — the positive result
+
+frtrim 27B sampled spread completes the correction set: seeds {7,17,27,37} ->
+60.8/60.7/41.5/70.5 (mean ~58% +-12; variance arm-independent, trajectory-driven;
+frtrim mean 58 vs student mean 33).
+
+Q4_0 draft (trim + 4-bit, 212MB vs Q8's 401MB, zero training), 9B:
+
+| cell | frtrim Q8 | frtrim Q4_0 |
+|---|---|---|
+| longchat greedy | 55.5% -> 283.4 (1.98x) | **57.2% -> 303.5 (2.12x)** |
+| chat greedy | 38.4% -> 227.5 (1.58x) | 37.9% -> 238.9 (1.65x) |
+| OOD live-text chain | 0.427 | 0.419 (98%) |
+
+**4-bit draft = free: acceptance within noise everywhere INCLUDING off-distribution
+(-2% rel, vs prune's -32%), +7-11% tok/s, 47% smaller.** The robustness law's
+constructive corollary: UNIFORM cuts (precision) keep the generalization tail;
+SELECTIVE cuts (channels, distill) lose it. Draft-step reads: natural 1.33GB ->
+trim-Q8 0.40GB -> trim-Q4 0.21GB (~6x), zero training, error-tolerant by
+construction. Note: prior "-15pts Q4_K external draft" engine datum was a
+cross-converter artifact — clean same-source Q4_0 shows none of it.
+
+Positive-paper direction (owner gate passed: faster AND smaller): "Quantize the
+Draft". Ladder: NVFP4 head (~120MB), 27B replication, long-prompt SET battery
+(coverage fix), MT-Bench Q4 arm, multi-seed protocol from day one.
