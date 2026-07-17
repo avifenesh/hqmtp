@@ -244,3 +244,22 @@ cross-converter artifact — clean same-source Q4_0 shows none of it.
 Positive-paper direction (owner gate passed: faster AND smaller): "Quantize the
 Draft". Ladder: NVFP4 head (~120MB), 27B replication, long-prompt SET battery
 (coverage fix), MT-Bench Q4 arm, multi-seed protocol from day one.
+
+## STRONG BATTERY (2026-07-17) — Quantize the Draft, final 9B tables
+
+Protocol: aggregates only — MT-Bench 80 prompts (short, NGEN 256) + longset 20
+prompts 2-6k tokens (NGEN 512), greedy + 3 sampled seeds, K=4, resident-model
+sweeps, clean baselines (gen 143-144.5 all arms; one contended cell rerun clean).
+
+MT-Bench: natural 50.1% 1.52x | trim-Q8 47.0% 1.78x | trim-NVFP4 45.6% **1.82x**
+  sampled: natural 1.31-1.38x | Q8 1.60-1.64x | NVFP4 1.63-1.64x
+Longset: natural 61.6% 1.72x | trim-Q8 60.0% **2.04x** | trim-NVFP4 54.7% 1.98x
+  sampled: natural 1.51-1.52x | Q8 1.49-1.81x (acc ±7pts!) | NVFP4 **1.77-1.83x (acc ±1.2pts)**
+
+Verdict: **trim+NVFP4 (212MB, zero training, verify-lossless) = 1.63-1.98x across
+every regime**: best short arm, best sampled-long arm, within 3% of Q8's single
+greedy-long win. 4-bit acceptance cost 1.4pts short / 5.3pts long-greedy, bought
+back by halved reads. UNEXPECTED FINDING: NVFP4 stabilizes sampled trajectories
+(seed sd 1.2pts vs Q8's 7pts) — smoother quantization grid -> less trajectory
+sensitivity. Aggregate protocol validated: single-prompt sampled sd ±12pts ->
+20-prompt aggregate ±1.2pts (NVFP4) — reproduces across builds.
