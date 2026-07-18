@@ -282,3 +282,30 @@ own-trim + NVFP4-head + q4_K-block arm beat its prior champion on BOTH axes
 EXPERIMENTAL PROGRAM COMPLETE for "Quantize the Draft": two models x two suites x
 multi-seed + third-config independent replication + mechanism theory (robustness
 law) + methodology (aggregate protocol). Remaining: prose.
+
+## AUDIT LAB (2026-07-18) — the pre-deployment robustness audit, validated
+
+7 compression arms on the trimmed 9B head (torch slot0, in-dist gen2-eval 2500
+pos + OOD fresh-live 2500 pos, shared reference ctx): uniform (q8/q4/nvfp4
+weight roundtrips) vs selective (prune25/50 act-mass masks; SVD-768 data-free +
+activation-whitened low-rank FFN, byte-matched to prune25).
+
+| arm | in-dist disagree | harm/disagree | OOD tax |
+|---|---|---|---|
+| q8/q4/nvfp4 | 0.003-0.044 | ~0.14 | -0.008..-0.002 (ZERO) |
+| prune50/25 | 0.050/0.083 | 0.28/0.30 | +0.005/+0.022 |
+| svdw/svd768 | 0.155/0.166 | ~0.54 | +0.035/+0.048 |
+
+1. LAW CONFIRMED, STRONG FORM: all dimension cuts pay OOD tax incl. LOW-RANK;
+   data-free SVD pays MORE than calibrated SVD -> dimensionality is the axis,
+   not calibration-dependence (the 2x2 disconfound nobody ran).
+2. AUDIT: in-dist disagreement-with-reference predicts OOD tax at Spearman 0.89
+   (7 arms); harm-per-disagreement separates families (quant disagreements are
+   accuracy-neutral tie-flips ~0.14; dimension-cut disagreements are function
+   loss 0.28-0.54). Practical rule: forward passes on in-dist docs only ->
+   low harm-rate = OOD-safe; high harm-rate = expect OOD tax ~0.5-1x in-dist
+   damage. NO OOD DATA REQUIRED.
+3. v1 statistic (rare-share of disagreement) FALSIFIED — kept for honesty;
+   rarity-concentration is prune-specific (SVD damages broadly), harm-rate is
+   the universal signal.
+Tooling: distill/audit_lab.py. Next: divergence-tail (canary) pruning calibration.
