@@ -467,3 +467,12 @@ reference acc indist 0.703 / trueood 0.544.
 Taxonomy replicates AND amplifies on the base model (function tax up to 34pts). Harm separates families (0.03 vs 0.18-0.38). Caveats: within-function disagreement->tax ranking flipped on n=3 (arms not byte-matched); head-fit harm thresholds (0.15/0.25) put base prune25 in the gray zone -> thresholds object-specific, separation general. distill/p4 script: box ~/hqmtp-distill/p4_base_audit.py, base-audit.json.
 
 P2 (quantized-base 27B compose) rerun in flight w/ correct gguf path incl. engine-lane frspec32768 arm. P3 (zh re-rank) rerun in flight (first pass grep-filtered the table rows).
+
+**P3 — dynamic vocabulary re-rank (zh recovery, 9B forced replay on trueood zh wiki):**
+| arm | slot0 (per-bucket range, 3 docs) | chain |
+|---|---|---|
+| natural | 0.41-0.66 | 0.13-0.23 |
+| frtrim (English hot32k) | 0.03-0.13 COLLAPSED | ~0.02 |
+| frtrim-zh (hot32k re-ranked on 40 fresh zh wiki docs, weights-free, minutes) | 0.42-0.56 ~= natural | 0.13-0.19 |
+
+Re-rank restores acceptance to natural parity at zero training. Coverage collapse (5.4% zh) is fully recoverable by per-register vocabulary re-export: the recipe's weakness is an adjustable knob, and the artifact swap is a 212MB file. Confirms "dynamic/per-register draft dispatch" as a live direction (relates to the closed bw24 dispatch PR #13 idea, now with direct evidence).
