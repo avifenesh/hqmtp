@@ -309,3 +309,22 @@ activation-whitened low-rank FFN, byte-matched to prune25).
    rarity-concentration is prune-specific (SVD damages broadly), harm-rate is
    the universal signal.
 Tooling: distill/audit_lab.py. Next: divergence-tail (canary) pruning calibration.
+
+## E4 — divergence-tail (canary) pruning calibration: negative, completes the set (2026-07-18)
+
+Restore +5% budget to prune25 chosen by (a) canary-conditioned mass (channels
+firing at the 417 in-dist divergence positions) vs (b) global mass (control):
+canary in-dist 0.8544 / OOD 0.8052; global 0.8596 / 0.8068 (full 0.8784/0.8404).
+Canary restoration recovers LESS than the naive control (sets 102/614 overlap —
+real comparison). SIX selection schemes now fail identically: activation-mass,
+Wanda act*weight, wide calibration, online EMA, vocab-conditioned energy,
+divergence-conditioned mass. Practical playbook line hardens: there is no known
+safe pruning calibration for draft heads — quantize instead; the audit
+(harm-rate) is the tool that tells you your cut is in the unsafe family.
+
+PRACTICAL-PAPER MEASUREMENT PROGRAM COMPLETE:
+1. Method: trim+NVFP4 one-command compression — 1.6-2.7x, two models, tooling done.
+2. Instrument: in-dist harm-rate audit, rho 0.89 over 7 arms, no OOD data needed.
+3. Playbook: quantize don't prune (6-scheme impossibility); distill only when no
+   head exists; serving-regime data rules; aggregate benchmark protocol.
+Remaining: prose + tooling README.
