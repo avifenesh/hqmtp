@@ -357,3 +357,21 @@ Binomial 95% CIs (delta method) + exact permutation tests:
   labelings = the n=7 minimum). All four function-cut taxes exclude 0
   individually; both 4-bit taxes are within CI of 0.
 - Same-register: rho = 0.893, p = 0.0062; family gap +0.031, p = 0.0286.
+
+## C5: base-quantization cross battery (2026-07-18)
+
+Question (reviewer C5): does the recipe survive when the BASE model is quantized? 2x3x2 battery on 9B: {bf16 base, NVFP4-quantized base} x {natural head, frtrim+Q8 head, frtrim+NVFP4 head} x {greedy, t0.7s7}. MT-Bench 80 prompts, K=4, aggregate protocol.
+
+| base | arm | greedy acc / x | t0.7s7 acc / x |
+|---|---|---|---|
+| bf16 (144.5 tok/s plain) | natural | 50.1% / 1.52x | 45.5% / 1.31x |
+| bf16 | frtrimq8 | 47.0% / 1.77x | 45.9% / 1.64x |
+| bf16 | nvfp4 | 45.6% / 1.82x | 43.1% / 1.64x |
+| nvfp4-st-ct (190.5 tok/s plain) | natural | 51.9% / 1.27x | 47.0% / 1.09x |
+| nvfp4-st-ct | frtrimq8 | 48.0% / 1.50x | 45.3% / 1.35x |
+| nvfp4-st-ct | nvfp4 | 45.9% / 1.54x | 42.7% / 1.36x |
+
+Findings:
+1. Head-compression acceptance cost is base-independent: natural->nvfp4 head drops 4.5pts on bf16 base, 6.0pts on quantized base (greedy); compressed-head absolute acceptance within 1pt across bases (47.0 vs 48.0, 45.6 vs 45.9). Fidelity cuts to head and base do not compound.
+2. Recipe composes with base quantization: best absolute cell = quantized base + NVFP4 head, 292.7 tok/s = 2.03x over bf16 plain decode (144.5). Relative speedup per-base shrinks (1.82x -> 1.54x) because the quantized base's plain decode is already 32% faster; absolute throughput still rises.
+3. Natural head accepts slightly MORE against the quantized verifier (51.9 vs 50.1 greedy) - verifier smoothing, within seed noise; not a claim.
