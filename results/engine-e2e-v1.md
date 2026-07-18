@@ -414,3 +414,13 @@ Single-prompt sampled cells are far worse than the 4-seed estimate suggested (12
 2.09x = new best 9B long cell (vs Q8 2.04, all-NVFP4 1.98). vs all-NVFP4: same size, +3.6 acceptance pts long-greedy -> the 9B long 4-bit acceptance cost lives in the BLOCK codec, not the projection. Projection NVFP4 free everywhere; block prefers Q4_0 at 9B long. Matches engine-lane q4_K-block winner.
 
 MEGACHAIN COMPLETE: C5, C6, entropy, seed20, mixed all landed.
+
+## Round-2 review response experiments (2026-07-18)
+
+**Leave-one-domain-out Spearman** (per-domain audit re-run, 800 pos/domain): full rho=1.000; dropping any single domain keeps rho in {0.964, 1.000} (worst = one adjacent-pair swap). Family gap survives every drop (fidelity <=2.5pts, function >=5.0pts, worst case drop=wiki-de). Ranking is not a lynchpin-document artifact. results/audit-perdomain.json.
+
+**Hot-32k coverage per domain** (hotcov.json): INDIST 94.0%, c4web 94.9%, pubmed 92.8%, wiki-de 61.7%, wiki-ru 21.1%, wiki-he 9.5%, wiki-zh 5.4%. Confirms the honest scoping: trim's coverage is register-bound (collapses on non-Latin scripts) while the retained function is not (4-bit arms keep >=97.5% within-hot retention on the same corpora). Trim tax = coverage gap, measurable pre-deployment; function tax = invisible without the audit.
+
+**Rare-share audit v1 concrete numbers** (9B): rare-share of disagreement q4 0.316, nvfp4 0.327 vs prune25 0.377, prune50 0.357, svd768 0.228, svdw768 0.265 — quantized arms sit inside the function arms' range; statistic separates nothing. (27B: same overlap.)
+
+**Wanda scheme cell** (recovered to record): wanda25 slots 0.859/0.792/0.698/0.637 chain 0.712 vs mass25 chain 0.712; ranking overlap 88%; identical live acceptance. Wanda == mass for this head.
