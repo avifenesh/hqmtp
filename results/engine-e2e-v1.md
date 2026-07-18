@@ -440,3 +440,7 @@ MEGACHAIN COMPLETE: C5, C6, entropy, seed20, mixed all landed.
 Block-codec law refined: Q4_0 block wins LONG suites at both scales (2.09x@9B, 2.70x@27B); NVFP4 block wins SHORT at 27B (2.15 vs 2.04). Projection NVFP4 free everywhere. Deployment picks block codec per regime.
 
 Longset sampled seed spread: mixed 9B 1.72-2.16 (0.44x), 27B 1.77-2.37 (0.60x) — 20-prompt suite at t0.7 does NOT pin speedup to 0.04x; that tightness is MT-Bench-only (80 prompts). Protocol note scoped accordingly in paper §4.0.
+
+Rerun of contended 9B mtbench mixed sampled cells (clean gen 144.3): s17 43.4%/1.65x, s27 43.0%/1.64x (s7 41.8%/1.61x). Mean 1.63 == Q8/NVFP4 sampled 1.64; MT-Bench tie-threshold (0.04x) holds for mixed too. Contended cells (1.48/1.51) superseded.
+
+R2CHAIN COMPLETE. Paper measurement program closed: all review-response experiments landed.

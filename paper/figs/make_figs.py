@@ -58,20 +58,21 @@ speed = {  # end-to-end x over plain decode, aggregate cells
     "natural": [1.52, 1.72, 2.02, 2.42],
     "trim-Q8": [1.78, 2.04, 2.15, 2.59],
     "trim-NVFP4": [1.82, 1.98, 2.15, 2.67],
+    "trim-mixed": [1.81, 2.09, 2.04, 2.70],
 }
-fig, ax = plt.subplots(figsize=(4.6, 2.4))
-w = 0.26
+fig, ax = plt.subplots(figsize=(5.0, 2.4))
+w = 0.21
 for i, (arm, v) in enumerate(speed.items()):
-    c = [REF, FID, "#053061"][i]
-    x = [g + (i - 1) * w for g in range(4)]
+    c = [REF, FID, "#053061", "#5aae61"][i]
+    x = [g + (i - 1.5) * w for g in range(4)]
     ax.bar(x, v, w, color=c, label=arm)
     for xi, vi in zip(x, v):
-        ax.text(xi, vi + 0.03, f"{vi:.2f}", ha="center", fontsize=6.5)
+        ax.text(xi, vi + 0.03, f"{vi:.2f}", ha="center", fontsize=5.2, rotation=90, va="bottom")
 ax.axhline(1.0, color="k", lw=0.6, ls=":")
 ax.set_xticks(range(4), groups)
 ax.set_ylabel("speedup over plain decode")
-ax.set_ylim(0, 3.0)
-ax.legend(frameon=False, fontsize=7.5, ncol=3, loc="upper left")
+ax.set_ylim(0, 3.25)
+ax.legend(frameon=False, fontsize=7, ncol=4, loc="lower left", bbox_to_anchor=(0, 1.0))
 save(fig, "f1_headline")
 
 # ---------------- F2: retention vs shift distance ----------------
