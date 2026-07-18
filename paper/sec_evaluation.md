@@ -22,7 +22,7 @@ Table 1 reports the full grid. On the 9B short suite, trim-NVFP4 reaches 262.8 t
 
 Acceptance explains the shape. Trimming costs 0 to 3 acceptance points (at 27B long, 0.2 points) because hot-vocabulary coverage on generated text is 95 to 99%. Four-bit quantization costs another 1.4 to 5.3 points. The bandwidth saving buys those points back everywhere except one cell (9B long greedy, where Q8's higher acceptance wins by 3%). A third configuration built independently in the engine's own lane, with a different vocabulary ranking and a q4_K block, reproduced the pattern and beat its own prior champion on both speed and acceptance.
 
-**Takeaway.** Trim plus 4-bit quantization turns the 1.33GB-per-token head into a 212MB artifact that is the fastest or tied-fastest arm in every aggregate cell, with zero training and unchanged outputs.
+**Takeaway.** Trim-NVFP4 turns the 1.33GB-per-token head into a 212MB artifact that is the fastest or tied-fastest arm in every aggregate cell, with zero training and unchanged outputs.
 
 ## 4.2 Robustness separates the families by an order of magnitude
 
