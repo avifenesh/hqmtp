@@ -396,3 +396,21 @@ Family separation replicates: fidelity <=1.5pts, function 7.6-12.7pts. **Disagre
 
 KL(ref||q8) mean 0.0003 (p99 0.0024) — Q8 is the reference. KL(ref||nvfp4) mean 0.020 (p99 0.19).
 NVFP4 raises draft entropy 0.686 -> 0.721 (+5%) and lowers top1 margin 5.91 -> 5.70: 4-bit rounding acts as mild smoothing on the draft distribution. Candidate mechanism for the observed sampled-variance stabilization (NVFP4 seed spread ±1.2pts vs Q8 ±7pts on 9B longset): a slightly flatter draft is less trajectory-sensitive under temperature sampling. 20-seed study (running) quantifies the variance side.
+
+## 20-seed sampled variance + mixed-precision arm (2026-07-18, megachain tail)
+
+**Seed20** (9B, single longchat prompt, 512 gens, t0.7, seeds 7..197):
+- frtrim-Q8 head: mean 59.0%, sd 13.2, range 22.3-79.7 (spread 57.4pts)
+- frtrim-NVFP4 head: mean 50.1%, sd 14.0, range 13.1-63.6 (spread 50.5pts)
+
+Single-prompt sampled cells are far worse than the 4-seed estimate suggested (12pts): the 20-seed tails span ~50-57pts. **Correction to 814cdb2's "NVFP4 stabilizes sampled variance": dead.** At 20 seeds the two formats' spreads are indistinguishable (sd 13.2 vs 14.0). The earlier ±1.2 vs ±7pts contrast was 3-seed suite-level luck. Aggregation is the only stabilizer. Entropy study's smoothing (KL 0.020) is real but has no measurable variance effect.
+
+**Mixed arm** (--mixed: NVFP4 lm_head + Q4_0 block, trim 32k; artifact 212,553,280 B = byte-same as all-NVFP4):
+| suite | greedy | t0.7s7 |
+|---|---|---|
+| MT-Bench | 45.1% / 1.81x | 41.8% / 1.61x |
+| longset | **58.3% / 2.09x** | 50.6% / 1.75x |
+
+2.09x = new best 9B long cell (vs Q8 2.04, all-NVFP4 1.98). vs all-NVFP4: same size, +3.6 acceptance pts long-greedy -> the 9B long 4-bit acceptance cost lives in the BLOCK codec, not the projection. Projection NVFP4 free everywhere; block prefers Q4_0 at 9B long. Matches engine-lane q4_K-block winner.
+
+MEGACHAIN COMPLETE: C5, C6, entropy, seed20, mixed all landed.
