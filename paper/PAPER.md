@@ -125,7 +125,7 @@ Run the compressed head and its uncompressed reference on the same in-distributi
 
 ## 5.2 What the two numbers say
 
-Harm rate identifies the family. Fidelity cuts disagree by tie-flipping: their rounding noise swaps tokens of near-equal probability, so a disagreement costs almost nothing (harm 0.14 across our quantized arms). Function cuts disagree by losing function: their disagreements land where machinery vanished, so each one costs accuracy (harm 0.28 to 0.54). Disagreement rate then ranks severity within and across families: on the same-register corpus it predicts the off-distribution tax at Spearman 0.89 (exact p = 0.006) over seven arms.
+Harm rate identifies the family. Fidelity cuts disagree by tie-flipping: their rounding noise swaps tokens of near-equal probability, so a disagreement costs almost nothing (harm 0.14 across our 4-bit arms; Q8 disagrees 8 times in 2,500 positions, too few to score and too few to matter). Function cuts disagree by losing function: their disagreements land where machinery vanished, so each one costs accuracy (harm 0.28 to 0.54). Disagreement rate then ranks severity within and across families: on the same-register corpus it predicts the off-distribution tax at Spearman 0.89 (exact p = 0.006) over seven arms.
 
 The decision rule for a deployment has two branches. Harm rate near 0.15 means the compression is noise-type, and its in-distribution cost is the full cost. Harm rate above 0.25 means the compression is function-type, and live traffic will multiply the in-distribution damage. In our measurements the multiplier under genuine shift is 6 to 10x.
 
