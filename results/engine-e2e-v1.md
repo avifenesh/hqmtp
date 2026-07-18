@@ -348,3 +348,12 @@ refinement: fidelity cuts are CHEAP, 8-bit is FREE). In-dist disagreement rankin
 predicts true-OOD tax monotonically (rho ~0.96) — audit strengthens on the harder
 test. Reviewer delta's reject concern answered: same-register OOD UNDERSTATED the
 law. Suite: distill/build_trueood.py -> /opt/dlami/nvme/hqmtp-trueood-*.
+
+## Statistical tests (2026-07-18)
+
+Binomial 95% CIs (delta method) + exact permutation tests:
+- TRUE shift: Spearman(in-dist disagreement, tax) = 1.000, exact p = 0.0002
+  (5040 permutations); family tax gap +0.145, permutation p = 0.0286 (35
+  labelings = the n=7 minimum). All four function-cut taxes exclude 0
+  individually; both 4-bit taxes are within CI of 0.
+- Same-register: rho = 0.893, p = 0.0062; family gap +0.031, p = 0.0286.
