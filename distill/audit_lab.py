@@ -161,26 +161,35 @@ def load_docs(pat, corpus_dir, n, tok):
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--cal-data", default="/opt/dlami/nvme/hqmtp-gen2-data")
+    ap.add_argument("--cal-corpus", default="/opt/dlami/nvme/hqmtp-gen2-corpus")
+    ap.add_argument("--indist", default="/opt/dlami/nvme/hqmtp-gen2-eval")
+    ap.add_argument("--ood", default="/opt/dlami/nvme/hqmtp-ood-data")
+    ap.add_argument("--hot", default="/opt/dlami/nvme/hqmtp-data2/hot32k.pt")
+    ap.add_argument("--tok", default=os.environ.get(
+        "HQMTP_TOK", "/data/ai-ml/hf-models/qwen35-9b-hf"))
+    ap.add_argument("--out", default=os.path.expanduser(
+        "~/hqmtp-distill/audit-lab.json"))
+    args = ap.parse_args()
     from transformers import AutoTokenizer
     import utilization_probe as up
-    tok = AutoTokenizer.from_pretrained("/data/ai-ml/hf-models/qwen35-9b-hf")
+    tok = AutoTokenizer.from_pretrained(args.tok)
     T = TeacherHead(interleaved_rope=True)
     dev = "cuda"
-    hot = torch.load("/opt/dlami/nvme/hqmtp-data2/hot32k.pt",
-                     weights_only=False)["hot_ids"]
+    hot = torch.load(args.hot, weights_only=False)["hot_ids"]
     hot_l = hot.long()
     t2d = torch.full((T.lm_head.shape[0],), -1, dtype=torch.long, device=dev)
     t2d[hot_l.to(dev)] = torch.arange(len(hot), device=dev)
 
-    cal = load_docs("/opt/dlami/nvme/hqmtp-gen2-data/*.hiddens.meta.json",
-                    "/opt/dlami/nvme/hqmtp-gen2-corpus", 12, tok)
-    indist = load_docs("/opt/dlami/nvme/hqmtp-gen2-eval/*.hiddens.meta.json",
-                       "", 12, tok)
-    ood = load_docs("/opt/dlami/nvme/hqmtp-ood-data/*.hiddens.meta.json", "", 24, tok)
+    cal = load_docs(f"{args.cal_data}/*.hiddens.meta.json", args.cal_corpus, 12, tok)
+    indist = load_docs(f"{args.indist}/*.hiddens.meta.json", "", 12, tok)
+    ood = load_docs(f"{args.ood}/*.hiddens.meta.json", "", 40, tok)
 
     # unigram freq bins from calibration corpus
     cnt = np.zeros(T.lm_head.shape[0], dtype=np.int64)
-    for f in sorted(glob.glob("/opt/dlami/nvme/hqmtp-gen2-corpus/*.txt"))[::4]:
+    for f in sorted(glob.glob(f"{args.cal_corpus}/*.txt"))[::4]:
         for i in tok(open(f).read()).input_ids:
             cnt[i] += 1
     arms = make_arms(T, hot, cal)
@@ -218,7 +227,7 @@ def main():
                   + " | agree " + " ".join(f"{x:.3f}"
                   for x in (d["agree"] / np.maximum(d["n"], 1))), flush=True)
 
-    json.dump(results, open(os.path.expanduser("~/hqmtp-distill/audit-lab.json"), "w"))
+    json.dump(results, open(args.out, "w"))
     # audit score (in-dist only): disagreement concentration in rarest 2 bins
     print("\n=== AUDIT vs OOD TAX ===")
     ref_i = results["indist"]["reference"]

@@ -328,3 +328,23 @@ PRACTICAL-PAPER MEASUREMENT PROGRAM COMPLETE:
 3. Playbook: quantize don't prune (6-scheme impossibility); distill only when no
    head exists; serving-regime data rules; aggregate benchmark protocol.
 Remaining: prose + tooling README.
+
+## TRUE domain-shift validation (2026-07-18, reviewer C1) — taxonomy AMPLIFIES
+
+New suite: 24 docs of de/zh/he/ru Wikipedia + PubMed abstracts + C4 web text
+(reference slot0 drops 0.878 -> 0.362 — genuinely shifted). 7-arm audit rerun:
+
+| arm | in-dist ret | true-OOD ret | tax |
+|---|---|---|---|
+| q8 | 0.998 | 0.999 | -0.001 |
+| q4 / nvfp4 | 0.994/0.993 | 0.977/0.975 | +0.017/+0.019 |
+| prune50 | 0.984 | 0.882 | +0.102 |
+| prune25 | 0.972 | 0.804 | +0.168 |
+| svdw / svd | 0.905/0.898 | 0.737/0.711 | +0.168/+0.187 |
+
+Family gap widens ~10x under genuine shift (fidelity <=2pts; function 10-19pts).
+8-bit exactly free; 4-bit shows first visible tax under extreme shift (honest
+refinement: fidelity cuts are CHEAP, 8-bit is FREE). In-dist disagreement ranking
+predicts true-OOD tax monotonically (rho ~0.96) — audit strengthens on the harder
+test. Reviewer delta's reject concern answered: same-register OOD UNDERSTATED the
+law. Suite: distill/build_trueood.py -> /opt/dlami/nvme/hqmtp-trueood-*.
