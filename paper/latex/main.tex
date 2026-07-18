@@ -68,7 +68,7 @@ This paper contributes:
 \item \textbf{A pre-deployment audit that needs no shifted data.} Running the compressed head beside its reference on in-distribution documents yields two numbers: disagreement rate and harm per disagreement. Harm classifies the family (0.14 for fidelity cuts versus 0.28 to 0.54 for function cuts). Disagreement ranks the off-distribution tax exactly (Spearman 1.0, exact $p = 0.0002$, on the domain-shift suite).
 \end{enumerate}
 
-On Qwen3.5-9B and Qwen3.6-27B in a production CUDA engine, the recipe delivers 1.8\x{} and 2.2\x{} on a short-prompt suite, and 2.0\x{} and 2.7\x{} on a long-context suite, from 212MB and 259MB draft artifacts. Every cell aggregates 80 or 20 prompts and three sampling seeds. The 27B long-context configuration reaches 127.5 tokens per second against 47.7 for plain decoding. An independently built third configuration reproduces the recipe's pattern. The negative results that shaped the taxonomy, six failed selection schemes, two falsified mechanisms, and one retracted headline, appear in full, together with the measurement protocol that makes sampled-decoding comparisons reproducible.
+On Qwen3.5-9B and Qwen3.6-27B in a production CUDA engine, the recipe delivers 1.8\x{} and 2.2\x{} on a short-prompt suite, and 2.0\x{} and 2.7\x{} on a long-context suite, from 212MB and 259MB draft artifacts. Every cell aggregates 80 or 20 prompts and three sampling seeds. The fastest 27B long-context cell reaches 128.6 tokens per second against 47.7 for plain decoding. An independently built third configuration reproduces the recipe's pattern. The negative results that shaped the taxonomy, six failed selection schemes, two falsified mechanisms, and one retracted headline, appear in full, together with the measurement protocol that makes sampled-decoding comparisons reproducible.
 
 \section{Setting: Draft Heads, and Verification as an Oracle}
 \label{sec:setting}
@@ -137,7 +137,7 @@ The safe moves compose: trim the projection (structural, coverage-capped, shift-
 
 We evaluate on Qwen3.5-9B and Qwen3.6-27B, two dense hybrid models that ship co-trained MTP heads, running in bw24, a production CUDA engine, on a single RTX PRO 6000 (96GB). Two prompt suites cover the serving range. The short suite is MT-Bench: 80 prompts across eight categories, 256 generated tokens each. The long suite is 20 prompts of 1.9k to 5.9k tokens (documents with analysis instructions, long code files with review instructions), 512 generated tokens each. Each cell reports acceptance (accepted drafts over drafted tokens at $K{=}4$) and end-to-end tokens per second against the same-suite plain-decode baseline, for greedy decoding and for temperature 0.7 with three sampling seeds.
 
-The aggregate protocol is itself a finding. A single-prompt sampled cell swings by 12 acceptance points across four seeds, and twenty seeds on one long prompt span 57 points (standard deviation 13): the sampler wanders into a different trajectory, and acceptance reflects whatever content appears. The spread is format-independent (Q8 and NVFP4 heads swing alike, sd 13.2 versus 14.0), so no quantization choice buys it back. Toggling an attention-kernel variant moves the trajectory the same way. Suite-level aggregation with three seeds brings the spread under 1.5 points, and the aggregate speedups move at most 0.04\x{} across seeds, so we interpret speedup gaps at or under 0.04\x{} as ties. Every number below is an aggregate; we report single-prompt cells nowhere. One earlier headline of ours (a 2.68\x{} sampled cell) failed this protocol; we retracted it in the lab record.
+The aggregate protocol is itself a finding. A single-prompt sampled cell swings by 12 acceptance points across four seeds, and twenty seeds on one long prompt span 57 points (standard deviation 13): the sampler wanders into a different trajectory, and acceptance reflects whatever content appears. The spread is format-independent (Q8 and NVFP4 heads swing alike, sd 13.2 versus 14.0), so no quantization choice buys it back. Toggling an attention-kernel variant moves the trajectory the same way. Suite-level aggregation with three seeds brings the acceptance spread under 1.5 points on the 80-prompt suite, whose aggregate speedups then move at most 0.04\x{} across seeds; we interpret speedup gaps at or under 0.04\x{} as ties. The 20-prompt long suite still moves several tenths under sampling, so we rank arms on greedy cells and quote its sampled cells as three-seed means. Every number below is an aggregate; we report single-prompt cells nowhere. One earlier headline of ours (a 2.68\x{} sampled cell) failed this protocol; we retracted it in the lab record.
 
 \textbf{Arms.} The reference is the unmodified head. Trim replaces the 248,320-row output projection with the 32,768 rows ranked hottest on the model's own generated text, plus an index map into the full vocabulary. Verification stays full-vocabulary, so greedy output stays identical and sampled output stays distribution-exact by the standard speculative guarantee \cite{leviathan2023fast,chen2023accelerating}. Trim-Q8 and trim-NVFP4 quantize all head matrices to 8-bit and 4-bit blocks on top of the trim. The robustness study (\S\ref{sec:robust}) adds channel pruning at two budgets, low-rank factorization at a byte-matched rank in data-free and calibrated variants, and the distilled replacement head.
 
@@ -169,10 +169,12 @@ Suite & Arm & Acceptance & Speedup \\
 27B short & reference   & 53.2\% & 2.02\x \\
           & trim-Q8     & 50.4\% & \textbf{2.15\x} \\
           & trim-NVFP4  & 48.6\% & \textbf{2.15\x} \\
+          & trim-mixed  & 44.7\% & 2.04\x \\
 \midrule
 27B long  & reference   & 69.7\% & 2.42\x \\
           & trim-Q8     & 69.5\% & 2.59\x \\
-          & trim-NVFP4  & 67.5\% & \textbf{2.67\x} \\
+          & trim-NVFP4  & 67.5\% & 2.67\x \\
+          & trim-mixed  & 68.2\% & \textbf{2.70\x} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -186,7 +188,7 @@ Suite & Arm & Acceptance & Speedup \\
 
 Acceptance explains the shape. Trimming costs 0 to 3 acceptance points (at 27B long, 0.2 points) because hot-vocabulary coverage on generated text is 95 to 99\%. Four-bit quantization costs another 1.4 to 5.3 points. The bandwidth saving buys those points back everywhere except one cell (9B long greedy, where Q8's higher acceptance wins by 3\%). A third configuration built independently in the engine's own lane, with a different vocabulary ranking and a q4\_K block, reproduced the pattern and beat its own prior champion on both speed and acceptance.
 
-The 4-bit cost sits in the block, and a mixed export recovers it. Pairing the NVFP4 projection with a Q4\_0 block, at a byte-identical 212MB, keeps 58.3\% acceptance on the 9B long suite against all-NVFP4's 54.7\%, and its 2.09\x{} takes that suite outright. The projection tolerates any 4-bit format for free; the block's codec sets the remaining acceptance, and the deployment picks it per suite.
+The 4-bit cost sits in the block, and a mixed export recovers it. Pairing the NVFP4 projection with a Q4\_0 block, at a byte-identical 212MB, keeps 58.3\% acceptance on the 9B long suite against all-NVFP4's 54.7\%, and its 2.09\x{} takes that suite outright. At 27B the pattern repeats on the long suite, where the mixed export reaches 128.6 tok/s (2.70\x), the fastest cell we measure, while all-NVFP4 keeps the short-suite lead (2.15\x{} against 2.04\x). The projection tolerates any 4-bit format for free; the block's codec sets the remaining acceptance, and the deployment picks it per suite.
 
 \textbf{Takeaway.} A trimmed, fully 4-bit head is a 212MB artifact and the fastest or tied-fastest arm in every aggregate cell, with zero training and unchanged outputs; within the family, the block codec picks the winner.
 
