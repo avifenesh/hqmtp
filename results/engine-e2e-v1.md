@@ -424,3 +424,19 @@ MEGACHAIN COMPLETE: C5, C6, entropy, seed20, mixed all landed.
 **Rare-share audit v1 concrete numbers** (9B): rare-share of disagreement q4 0.316, nvfp4 0.327 vs prune25 0.377, prune50 0.357, svd768 0.228, svdw768 0.265 — quantized arms sit inside the function arms' range; statistic separates nothing. (27B: same overlap.)
 
 **Wanda scheme cell** (recovered to record): wanda25 slots 0.859/0.792/0.698/0.637 chain 0.712 vs mass25 chain 0.712; ranking overlap 88%; identical live acceptance. Wanda == mass for this head.
+
+## Mixed arm full grid (2026-07-18, r2chain tail)
+
+27B mixed export: 333MB (NVFP4 proj + Q4_0 block, hot32k-27b).
+| cell | acc / x |
+|---|---|
+| 27B mtbench greedy | 44.7% / 2.04x |
+| 27B mtbench t0.7 s7/s17/s27 | 42.3/36.6/42.6% -> 1.92/1.75/1.93x |
+| 27B longset greedy | **68.2% / 2.70x (128.6 tok/s) = NEW BEST CELL** (beats all-NVFP4 2.67x/127.5) |
+| 27B longset t0.7 s7/s17/s27 | 58.9/37.6/51.8% -> 2.37/1.77/2.17x |
+| 9B mtbench t0.7 s17/s27 | CONTENDED (gen 107-121 vs 144.5 clean) - rerun in flight |
+| 9B longset t0.7 s7/s17/s27 | 50.6/48.2/66.4% -> 1.75/1.72/2.16x |
+
+Block-codec law refined: Q4_0 block wins LONG suites at both scales (2.09x@9B, 2.70x@27B); NVFP4 block wins SHORT at 27B (2.15 vs 2.04). Projection NVFP4 free everywhere. Deployment picks block codec per regime.
+
+Longset sampled seed spread: mixed 9B 1.72-2.16 (0.44x), 27B 1.77-2.37 (0.60x) — 20-prompt suite at t0.7 does NOT pin speedup to 0.04x; that tightness is MT-Bench-only (80 prompts). Protocol note scoped accordingly in paper §4.0.
