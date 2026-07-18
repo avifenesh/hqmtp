@@ -444,3 +444,26 @@ Longset sampled seed spread: mixed 9B 1.72-2.16 (0.44x), 27B 1.77-2.37 (0.60x) �
 Rerun of contended 9B mtbench mixed sampled cells (clean gen 144.3): s17 43.4%/1.65x, s27 43.0%/1.64x (s7 41.8%/1.61x). Mean 1.63 == Q8/NVFP4 sampled 1.64; MT-Bench tie-threshold (0.04x) holds for mixed too. Contended cells (1.48/1.51) superseded.
 
 R2CHAIN COMPLETE. Paper measurement program closed: all review-response experiments landed.
+
+## Direction probes (2026-07-19)
+
+**P1 — compression unlocks speculation depth (27B longset greedy):**
+| arm | K=4 | K=5 | K=6 | K=8 |
+|---|---|---|---|---|
+| natural | 2.42x (115.3) | - | 2.44x (116.4) | - |
+| trim-NVFP4 | 2.67x | - | 2.74x (130.6) | 1.24x |
+| trim-mixed | 2.70x | **2.77x (132.1)** | 2.75x | 1.22x |
+
+Natural head is depth-neutral (2.42 -> 2.44 at K=6). Compressed heads gain +0.05-0.07x moving K 4->5/6. Compression shifts the optimal speculation depth because the drafting round is cheaper; K=8 hits an engine cliff for all arms. New best cell 132.1 tok/s (2.77x).
+
+**P4 — audit generality on the BASE model (9B, last-12-layer FFN arms, torch):**
+reference acc indist 0.703 / trueood 0.544.
+| arm | ret indist | ret ood | shift tax | disagree | harm/dis |
+|---|---|---|---|---|---|
+| q4 | 0.998 | 0.995 | 0.3pt | 3.8% | 0.034 |
+| prune25 | 0.940 | 0.603 | 33.7pts | 23.9% | 0.177 |
+| svd35 | 0.853 | 0.715 | 13.8pts | 27.1% | 0.382 |
+
+Taxonomy replicates AND amplifies on the base model (function tax up to 34pts). Harm separates families (0.03 vs 0.18-0.38). Caveats: within-function disagreement->tax ranking flipped on n=3 (arms not byte-matched); head-fit harm thresholds (0.15/0.25) put base prune25 in the gray zone -> thresholds object-specific, separation general. distill/p4 script: box ~/hqmtp-distill/p4_base_audit.py, base-audit.json.
+
+P2 (quantized-base 27B compose) rerun in flight w/ correct gguf path incl. engine-lane frspec32768 arm. P3 (zh re-rank) rerun in flight (first pass grep-filtered the table rows).
