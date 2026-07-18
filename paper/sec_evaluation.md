@@ -32,6 +32,8 @@ The tax divides the arms into two families. Fidelity cuts stay within noise of f
 
 The taxonomy also survives quantization of the base model itself. A cross on the 9B model pairs each head arm with a bf16 base and an NVFP4-quantized base, since deployed bases are rarely full-precision. Head-compression costs stay base-independent: the 4-bit head costs 4.5 acceptance points against the bf16 base and 6.0 against the quantized base, and each compressed head's absolute acceptance moves under one point across bases. Fidelity cuts to head and base compound in speed rather than in damage. The quantized base decodes 32% faster on its own, and adding the trim-NVFP4 head reaches 292.7 tokens per second, 2.03x over bf16 plain decode.
 
+The full grid replicates on Qwen3.6-27B. On the same domain-shift suite, re-extracted through the 27B trunk, fidelity taxes stay at or under 1.5 points and function taxes run 7.6 to 12.7 points. The family gap survives the model change.
+
 Two internal comparisons localize the cause. Data-free SVD pays a larger tax than calibration-weighted SVD at equal rank, so dimensionality itself drives the damage, independent of calibration data. And pruning's tax concentrates in rare-token bins while the low-rank tax spreads across all bins, yet both pay: selective cuts choose different function to delete, and shift surfaces the deletion either way.
 
 **Takeaway.** Under genuine distribution shift, function cuts cost an order of magnitude more acceptance than fidelity cuts, the gap widens with shift distance, and the effect is invisible to in-distribution evaluation.
@@ -48,4 +50,4 @@ Six selection schemes for channel pruning fail identically. The first four rank 
 
 **Takeaway.** Within zero-training compression, the function-cut tax is a property of selection from finite samples, and switching the statistic does not remove it.
 
-<!-- PENDING SLOTS (megachain): §4.1 add mixed-precision arm row; §4.2 add 27B audit replication sentence (C6); §4.0 seed-variance note cite 20-seed study. -->
+<!-- PENDING SLOTS (megachain): §4.1 add mixed-precision arm row; §4.0 seed-variance note cite 20-seed study + entropy appendix. -->

@@ -95,6 +95,8 @@ The tax divides the arms into two families. Fidelity cuts stay within noise of f
 
 The taxonomy also survives quantization of the base model itself. A cross on the 9B model pairs each head arm with a bf16 base and an NVFP4-quantized base, since deployed bases are rarely full-precision. Head-compression costs stay base-independent: the 4-bit head costs 4.5 acceptance points against the bf16 base and 6.0 against the quantized base, and each compressed head's absolute acceptance moves under one point across bases. Fidelity cuts to head and base compound in speed rather than in damage. The quantized base decodes 32% faster on its own, and adding the trim-NVFP4 head reaches 292.7 tokens per second, 2.03x over bf16 plain decode.
 
+The full grid replicates on Qwen3.6-27B. On the same domain-shift suite, re-extracted through the 27B trunk, fidelity taxes stay at or under 1.5 points and function taxes run 7.6 to 12.7 points. The family gap survives the model change.
+
 Two internal comparisons localize the cause. Data-free SVD pays a larger tax than calibration-weighted SVD at equal rank, so dimensionality itself drives the damage, independent of calibration data. And pruning's tax concentrates in rare-token bins while the low-rank tax spreads across all bins, yet both pay: selective cuts choose different function to delete, and shift surfaces the deletion either way.
 
 **Takeaway.** Under genuine distribution shift, function cuts cost an order of magnitude more acceptance than fidelity cuts, the gap widens with shift distance, and the effect is invisible to in-distribution evaluation.
@@ -131,7 +133,7 @@ The decision rule for a deployment has two branches. Harm rate near 0.15 means t
 
 ## 5.3 Validation under genuine shift
 
-On the domain-shift suite (§4.2), where the taxes are largest, the audit's in-distribution disagreement ranking orders the seven arms' taxes exactly: Spearman 1.0, exact p = 0.0002. The audit gets stronger where it matters more, because larger true taxes are easier to rank. The instrument's limits are its inputs: it compares against the uncompressed reference (which must exist), and it certifies the compression alone; model quality is out of its scope.
+On the domain-shift suite (§4.2), where the taxes are largest, the audit's in-distribution disagreement ranking orders the seven arms' taxes exactly: Spearman 1.0, exact p = 0.0002. The 27B replication reproduces the exact ranking over its own seven arms, so the instrument transfers across model scale unchanged. The audit gets stronger where it matters more, because larger true taxes are easier to rank. The instrument's limits are its inputs: it compares against the uncompressed reference (which must exist), and it certifies the compression alone; model quality is out of its scope.
 
 ## 5.4 The statistic that failed
 

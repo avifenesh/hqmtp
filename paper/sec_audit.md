@@ -24,7 +24,7 @@ The decision rule for a deployment has two branches. Harm rate near 0.15 means t
 
 ## 5.3 Validation under genuine shift
 
-On the domain-shift suite (§4.2), where the taxes are largest, the audit's in-distribution disagreement ranking orders the seven arms' taxes exactly: Spearman 1.0, exact p = 0.0002. The audit gets stronger where it matters more, because larger true taxes are easier to rank. The instrument's limits are its inputs: it compares against the uncompressed reference (which must exist), and it certifies the compression alone; model quality is out of its scope.
+On the domain-shift suite (§4.2), where the taxes are largest, the audit's in-distribution disagreement ranking orders the seven arms' taxes exactly: Spearman 1.0, exact p = 0.0002. The 27B replication reproduces the exact ranking over its own seven arms, so the instrument transfers across model scale unchanged. The audit gets stronger where it matters more, because larger true taxes are easier to rank. The instrument's limits are its inputs: it compares against the uncompressed reference (which must exist), and it certifies the compression alone; model quality is out of its scope.
 
 ## 5.4 The statistic that failed
 
