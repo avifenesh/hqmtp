@@ -28,7 +28,7 @@ def save(fig, name):
 # ---------------- Fig 2: head cost anatomy ----------------
 # bytes read per drafted token (9B): output projection + transformer block
 rows = [
-    ("reference head\n(248,320-row projection, Q8)", 1.06, 0.26),
+    ("reference head\n(248,320-row projection, Q8)", 1.08, 0.26),
     ("trim to 32k rows (Q8)", 0.14, 0.26),
     ("trim + NVFP4 (the recipe)", 0.07, 0.14),
 ]

@@ -9,7 +9,7 @@
 
 Speculative decoding accelerates autoregressive generation by drafting K candidate tokens cheaply and verifying them with one batched pass of the target model. Classical pipelines draft with a separate small model, which must exist, fit in memory, and match the target's distribution. Co-trained multi-token-prediction heads remove those requirements: the model ships with one extra transformer block, trained jointly with the trunk, that predicts ahead from the trunk's hidden state. The head inherits the trunk's distribution by construction and reaches acceptance rates external drafters struggle to match.
 
-The built-in convenience carries a fixed cost with two parts (Figure 2). The output projection spans the full vocabulary: 248,320 rows at Qwen3.5 scale, 1.06GB of 8-bit weights read per drafted token. The block itself adds 0.26GB. Decode-time inference is bandwidth-bound, so at K=4 the head's 5.3GB of reads per round competes directly with the target's own weights for the same memory bus. Deployments that load the head as a separate artifact pay in capacity as well: 1 to 2GB of a consumer GPU's memory that could hold context.
+The built-in convenience carries a fixed cost with two parts (Figure 2). The output projection spans the full vocabulary: 248,320 rows at Qwen3.5 scale, 1.08GB of 8-bit weights read per drafted token. The block itself adds 0.26GB. Decode-time inference is bandwidth-bound, so at K=4 the head's 5.3GB of reads per round competes directly with the target's own weights for the same memory bus. Deployments that load the head as a separate artifact pay in capacity as well: 1 to 2GB of a consumer GPU's memory that could hold context.
 
 ## 2.2 The verifier as a measurement instrument
 
