@@ -375,3 +375,24 @@ Findings:
 1. Head-compression acceptance cost is base-independent: natural->nvfp4 head drops 4.5pts on bf16 base, 6.0pts on quantized base (greedy); compressed-head absolute acceptance within 1pt across bases (47.0 vs 48.0, 45.6 vs 45.9). Fidelity cuts to head and base do not compound.
 2. Recipe composes with base quantization: best absolute cell = quantized base + NVFP4 head, 292.7 tok/s = 2.03x over bf16 plain decode (144.5). Relative speedup per-base shrinks (1.82x -> 1.54x) because the quantized base's plain decode is already 32% faster; absolute throughput still rises.
 3. Natural head accepts slightly MORE against the quantized verifier (51.9 vs 50.1 greedy) - verifier smoothing, within seed noise; not a claim.
+
+## C6: 27B audit replication (2026-07-18, true-OOD suite re-extracted with 27B trunk)
+
+audit_lab full grid on Qwen3.6-27B heads (same 7 arms, svd rank 960 byte-matched), in-dist 2,500 positions, OOD = true domain-shift suite (de/zh/he/ru wiki + PubMed + C4). Reference in-dist acc 0.805 -> OOD 0.324 (2.5x drop, mirrors 9B's 2.4x).
+
+| arm | in-dist disagree | shift tax (retention pts) |
+|---|---|---|
+| q8 | 0.60% | -0.1 |
+| q4 | 3.88% | +0.2 |
+| nvfp4 | 4.00% | +1.5 |
+| prune25 | 8.16% | +11.6 |
+| prune50 | 5.28% | +7.6 |
+| svd960 | 14.36% | +12.7 |
+| svdw960 | 11.88% | +12.5 |
+
+Family separation replicates: fidelity <=1.5pts, function 7.6-12.7pts. **Disagreement ranks tax at Spearman 1.0 again** (exact ranking on both models). Taxonomy + audit both model-independent within the family.
+
+## Entropy study (9B): why NVFP4 stabilizes sampled acceptance
+
+KL(ref||q8) mean 0.0003 (p99 0.0024) — Q8 is the reference. KL(ref||nvfp4) mean 0.020 (p99 0.19).
+NVFP4 raises draft entropy 0.686 -> 0.721 (+5%) and lowers top1 margin 5.91 -> 5.70: 4-bit rounding acts as mild smoothing on the draft distribution. Candidate mechanism for the observed sampled-variance stabilization (NVFP4 seed spread ±1.2pts vs Q8 ±7pts on 9B longset): a slightly flatter draft is less trajectory-sensitive under temperature sampling. 20-seed study (running) quantifies the variance side.
