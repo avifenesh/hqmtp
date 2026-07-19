@@ -14,7 +14,7 @@ D2=/opt/dlami/nvme/hqmtp-data2
 start_server() {
   BW24_MODELS="hqmtp-9b=$1" BW24_ADDR=127.0.0.1:8014 nohup $SRV > ~/hqmtp-distill/server.log 2>&1 &
   echo $! > /tmp/bw24-server.pid
-  for i in $(seq 1 90); do curl -s http://127.0.0.1:8014/health > /dev/null && return 0; sleep 5; done
+  for i in $(seq 1 240); do curl -s http://127.0.0.1:8014/health > /dev/null && return 0; sleep 5; done
   return 1
 }
 stop_server() { kill $(cat /tmp/bw24-server.pid) 2>/dev/null; sleep 5; }
