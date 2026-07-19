@@ -53,3 +53,4 @@ tar -czf $B/prompts.tgz -C /tmp mtbench-prompts longset-prompts 2>/dev/null
 cp ~/hqmtp-distill/*.json ~/hqmtp-distill/restore-*.log $B/ 2>/dev/null
 mark "PERSIST-DONE $B"
 mark RESTORE2-DONE
+# NOTE: venv needs jinja2 (chat_proxy) — install with torch stack

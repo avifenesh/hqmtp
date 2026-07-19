@@ -21,3 +21,7 @@ Rules learned the hard way:
 4. Speed cells need the GPU exclusive; acceptance-only cells tolerate sharing.
 5. Rebuilt corpora/hot-sets/suites are not bit-identical to the lost ones: compare new
    cells within-suite only.
+
+6. `chat_proxy.py` was box-only and died with the box; reconstructed into `distill/`.
+   Rule: every module a chain imports lives in the repo, no exceptions. Venv deps:
+   torch transformers datasets accelerate gguf numpy safetensors sentencepiece jinja2.
