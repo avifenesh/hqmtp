@@ -491,3 +491,13 @@ Composition confirmed at 27B; trim heads exported from the bf16 checkpoint work 
 ## BOX TERMINATED (2026-07-19, mid-P2b)
 
 i-028e42eef4629d05d (bw24-g7e-lanes, g7e.2xlarge us-west-2) = terminated during P2b mtbench half. Lost: P2b mtbench cells, mixed-K5-on-quantized-base cell, box-side artifacts (ggufs, corpora, base-audit.json raw). All essential numbers recorded here first; scripts all synced to repo (distill/). Probe program verdict stands on P1/P3/P4 complete + P2b longset.
+
+## Environment restore validated (2026-07-19, new box i-0e86b67afa723c42b)
+
+Full rebuild from repo runbooks + HF: engine (main lane), models, 1200-doc 9B + 600-doc 27B serving-regime corpora, hot32k/hot32k-27b, all six draft exports, prompt suites, trueood suite. Everything EBS-backed (nvme-links) + boot-resumable (hqmtp-restore.service).
+
+Sanity cell (9B MT-Bench nvfp4 greedy): **46.4% / 1.83x** vs pre-loss 45.6% / 1.82x — reproduction within noise despite fully regenerated corpus/hot-set (new hot head 30,713 rows vs 32,768). Recipe protocol is reproducible end to end from the repo alone.
+
+Casualties found + fixed during restore: chat_proxy.py (box-only, reconstructed), export_frtrim --nvfp4/--mixed flags (box-side additions, reconstructed from captured semantics), stale bw24-server binary (fatbin paths), 7.5-min health gate (27B loads in ~9min, peak RSS 48GB/62GB), stale 01:21 frtrim-draft (skip-if-exists trap: garbage artifacts must be deleted before resumable reruns).
+
+Open: base Qwen3.6-27B-NVFP4-Q4_K_M gguf restore stalled at 7.5G/16G (user restore lane) — blocks the 2 missing P2b cells.
