@@ -476,3 +476,18 @@ P2 (quantized-base 27B compose) rerun in flight w/ correct gguf path incl. engin
 | frtrim-zh (hot32k re-ranked on 40 fresh zh wiki docs, weights-free, minutes) | 0.42-0.56 ~= natural | 0.13-0.19 |
 
 Re-rank restores acceptance to natural parity at zero training. Coverage collapse (5.4% zh) is fully recoverable by per-register vocabulary re-export: the recipe's weakness is an adjustable knob, and the artifact swap is a 212MB file. Confirms "dynamic/per-register draft dispatch" as a live direction (relates to the closed bw24 dispatch PR #13 idea, now with direct evidence).
+
+**P2b — quantized-base composition at 27B (longset complete before box loss):**
+Base = Qwen3.6-27B NVFP4/Q4_K_M gguf (plain 71 tok/s = 1.49x over bf16 base's 47.7).
+| arm | acc | tok/s | vs bf16 plain |
+|---|---|---|---|
+| builtin MTP head | 56.2% | 129.3 | 2.71x |
+| engine-lane frspec32768 | 52.3% | 131.7 | 2.76x |
+| frtrim27-nvfp4 (bf16-exported head) | 52.4% | 132.4 | 2.78x |
+| **frtrim27-mixed** | 53.7% | **137.5** | **2.88x = absolute best of research** |
+
+Composition confirmed at 27B; trim heads exported from the bf16 checkpoint work unchanged on the Q4_K_M base and beat the engine-lane frspec arm. Head acceptance base-independent again (~53-54%).
+
+## BOX TERMINATED (2026-07-19, mid-P2b)
+
+i-028e42eef4629d05d (bw24-g7e-lanes, g7e.2xlarge us-west-2) = terminated during P2b mtbench half. Lost: P2b mtbench cells, mixed-K5-on-quantized-base cell, box-side artifacts (ggufs, corpora, base-audit.json raw). All essential numbers recorded here first; scripts all synced to repo (distill/). Probe program verdict stands on P1/P3/P4 complete + P2b longset.
