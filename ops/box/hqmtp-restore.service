@@ -1,0 +1,14 @@
+[Unit]
+Description=hqmtp resumable environment restore (safe on every boot; steps skip if outputs exist)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+ExecStart=/bin/bash /home/ubuntu/hqmtp-distill/restore3.sh
+TimeoutStartSec=6h
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
