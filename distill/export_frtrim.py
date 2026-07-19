@@ -42,6 +42,10 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--ffn-keep", help="pt file with LongTensor channel idx to keep "
                     "(activation-ranked) — the trim++ arm: physical FFN prune, no training")
+    ap.add_argument("--q4", action="store_true", help="Q4_0 all matrices")
+    ap.add_argument("--nvfp4", action="store_true", help="NVFP4 all matrices")
+    ap.add_argument("--mixed", action="store_true",
+                    help="NVFP4 lm_head + Q4_0 block (engine-lane winning combo)")
     args = ap.parse_args()
 
     cfg = json.load(open(os.path.join(args.model, "config.json")))
@@ -73,12 +77,20 @@ def main():
     w.add_float32("qwen35.rope.freq_base", theta)
     w.add_uint32("qwen35.rope.dimension_count", rot)
 
+    QT = gguf.GGMLQuantizationType.Q4_0 if (args.q4 or args.mixed) \
+        else gguf.GGMLQuantizationType.Q8_0
+
     def q8(name, x):
         a = np.ascontiguousarray(x.numpy().astype(np.float32))
-        w.add_tensor(name, gguf.quants.quantize(a, gguf.GGMLQuantizationType.Q8_0),
-                     raw_shape=gguf.quant_shape_to_byte_shape(
-                         a.shape, gguf.GGMLQuantizationType.Q8_0),
-                     raw_dtype=gguf.GGMLQuantizationType.Q8_0)
+        if args.nvfp4 or (args.mixed and name == "output.weight"):
+            from nvfp4_pack import quantize_nvfp4
+            qb = quantize_nvfp4(a)
+            w.add_tensor(name, qb, raw_shape=qb.shape,
+                         raw_dtype=gguf.GGMLQuantizationType.NVFP4)
+            return
+        w.add_tensor(name, gguf.quants.quantize(a, QT),
+                     raw_shape=gguf.quant_shape_to_byte_shape(a.shape, QT),
+                     raw_dtype=QT)
 
     def f32(name, x):
         w.add_tensor(name, np.ascontiguousarray(x.numpy().astype(np.float32)))
