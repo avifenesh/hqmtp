@@ -5,7 +5,7 @@ extraction, training, replay evaluation, corpus controls, and the negative-resul
 ledgers behind the working paper
 [Small-vocabulary MTP heads for memory-bound speculative decoding](https://avifenesh.ai/research/small-vocabulary-mtp/).
 
-The measurement instrument is [bw24](https://github.com/avifenesh/bw24), a
+The measurement instrument is [memra](https://github.com/avifenesh/memra), a
 from-scratch Rust + CUDA inference engine with per-run acceptance stats and
 exactness gates. Experiments run on an RTX PRO 6000 Blackwell (96 GB) EC2 box.
 
@@ -65,7 +65,7 @@ acceptance-side evidence, not a speedup claim.
 
 ## Reproducing
 
-The harness assumes bw24 as a sibling checkout (`../bw24`) for the engine-side
+The harness assumes memra as a sibling checkout (`../memra`) for the engine-side
 replay and acceptance batteries; the PyTorch side (`distill/`) is standalone.
 Checkpoints and extracted `.npz`/`.tt.npz` training data are not in the repo
 (see `.gitignore`); `distill/DISTILL.md` documents the exact extraction and
