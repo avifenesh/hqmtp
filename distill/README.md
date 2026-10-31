@@ -1,8 +1,8 @@
 # Draft-head compression toolkit
 
 Code for the paper *Fidelity Cuts vs Function Cuts: What Compressing Speculative-Decoding
-Draft Heads Destroys, and How to Detect It Before Deployment* (`paper/`). Everything runs
-forward passes only; no script here trains anything.
+Draft Heads Destroys, and How to Detect It Before Deployment* (`paper/`). The recipe, the
+audit and the study scripts run forward passes only; only the distillation lane trains.
 
 ## The two tools practitioners need
 
@@ -31,7 +31,8 @@ read. It reproduced identically on Qwen3.5-9B and Qwen3.6-27B (Spearman 1.0 both
 Distillation lane (taxonomy arm, §3.3): `train.py`, `teacher_targets.py`, `export_sv.py`,
 `gate_head.py`, `DISTILL.md`.
 
-Engine-side (speedups, §4.1): the bw24 CUDA engine loads the exported artifact via
-`BW24_MTP_DRAFT=<file>.gguf`; sweep batteries live in the engine repo.
+Engine-side (speedups, §4.1): the [memra](https://github.com/avifenesh/memra) CUDA engine
+(bw24 at the time of the paper) loads the exported artifact via
+`MEMRA_MTP_DRAFT=<file>.gguf` (`BW24_MTP_DRAFT` then); sweep batteries live in the engine repo.
 
 Figures: `paper/figs/make_figs.py` regenerates every data figure from `results/*.json`.

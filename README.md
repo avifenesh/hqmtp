@@ -34,8 +34,16 @@ This project is a worked example of letting the evidence rewrite the plan.
    precomputed teacher logits, then a short CE reinforcement. A subset-KL loss bug
    (top-64 only) was what made early KD look worse than CE; fixed, distillation-first
    wins on every slot ([`results/kd-naked.md`](results/kd-naked.md)).
+6. **Fidelity cuts vs function cuts.** Live engine batteries on Qwen3.5-9B and
+   Qwen3.6-27B split all head compression into two families. Function cuts (pruning,
+   low-rank, distillation) pay 10 to 19 retention points on shifted text; fidelity cuts
+   (precision) cost at most 1.9. The zero-training recipe wins: trim the head to the
+   model's own 32k hottest tokens, quantize to NVFP4, verify full-vocabulary. It runs
+   1.8 to 2.7x end-to-end over plain decode, distribution-exact. Paper: `paper/`
+   ([`paper/latex/main.pdf`](paper/latex/main.pdf)); tools: [`distill/README.md`](distill/README.md);
+   ledger: [`results/engine-e2e-v1.md`](results/engine-e2e-v1.md).
 
-## Current best
+## Best trained student
 
 Self-drafting chain acceptance, 45 held-out own-generation docs, 4 recursive slots:
 
@@ -47,9 +55,10 @@ Self-drafting chain acceptance, 45 held-out own-generation docs, 4 recursive slo
 
 **0.507 = 85.5% of the teacher's chain acceptance at ~13% of the draft compute.
 Slots 1–3 all exceed the teacher.** The remaining gap is slot 0 only; the KD curve
-is near-saturated at 24k steps, so the next levers are more own-output data and a
-wider student block. Wall time and memory are not yet measured — this is
-acceptance-side evidence, not a speedup claim.
+is near-saturated at 24k steps. Live in the engine, the student ties the natural
+head at long-context greedy (1.70x vs 1.71x), but the trimmed head matches or beats
+it in every reliably measured cell, so the deployment answer is: trim, no training
+([`results/engine-e2e-v1.md`](results/engine-e2e-v1.md)).
 
 ## Layout
 
@@ -62,11 +71,16 @@ acceptance-side evidence, not a speedup claim.
 - `results/` — the ledgers: verdicts, round notes, raw per-run JSONL and the
   saved generation corpora from the g7e box. Negative results stay.
 - `serve/` — chat proxy used to capture own-output training data.
+- `paper/`: the Fidelity Cuts vs Function Cuts paper. Section drafts, LaTeX build,
+  figures (`paper/figs/make_figs.py` reads `results/*.json`).
+- `ops/box/`: GPU box runbooks. Resumable environment restore, probe chains.
 
 ## Reproducing
 
-The harness assumes memra as a sibling checkout (`../memra`) for the engine-side
-replay and acceptance batteries; the PyTorch side (`distill/`) is standalone.
+The engine-side runners (`eval/run_eval.sh`, `ops/box/`) run on the GPU box against
+the engine under its earlier name, bw24 (`~/bw24`, `bw24-server`, `BW24_*` env vars).
+Current memra reads `MEMRA_*` (the draft file is `MEMRA_MTP_DRAFT`). The PyTorch
+side (`distill/`) is standalone.
 Checkpoints and extracted `.npz`/`.tt.npz` training data are not in the repo
 (see `.gitignore`); `distill/DISTILL.md` documents the exact extraction and
 training commands that produced every number above.
@@ -76,5 +90,5 @@ Related public threads: FR-Spec-style trimming for native MTP —
 
 ## Status
 
-Active. Working-paper numbers are labeled preliminary until wall-time, memory,
-and multi-seed replication land. MIT license.
+The measurement program is closed. Wall-time batteries, the 27B replication and
+the multi-seed sampled protocol are in `results/engine-e2e-v1.md`. MIT license.
