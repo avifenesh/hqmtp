@@ -34,12 +34,12 @@ This project is a worked example of letting the evidence rewrite the plan.
    precomputed teacher logits, then a short CE reinforcement. A subset-KL loss bug
    (top-64 only) was what made early KD look worse than CE; fixed, distillation-first
    wins on every slot ([`results/kd-naked.md`](results/kd-naked.md)).
-6. **Fidelity cuts vs function cuts.** Live engine batteries on Qwen3.5-9B and
+6. **Fidelity cuts vs function cuts.** Teacher-forced audits on Qwen3.5-9B and
    Qwen3.6-27B split all head compression into two families. Function cuts (pruning,
    low-rank, distillation) pay 10 to 19 retention points on shifted text; fidelity cuts
    (precision) cost at most 1.9. The zero-training recipe wins: trim the head to the
-   model's own 32k hottest tokens, quantize to NVFP4, verify full-vocabulary. It runs
-   1.8 to 2.7x end-to-end over plain decode, distribution-exact. Paper: `paper/`
+   model's own 32k hottest tokens, quantize to NVFP4, verify full-vocabulary. In live engine
+   batteries it runs 1.8 to 2.7x end-to-end over plain decode, distribution-exact. Paper: `paper/`
    ([`paper/latex/main.pdf`](paper/latex/main.pdf)); tools: [`distill/README.md`](distill/README.md);
    ledger: [`results/engine-e2e-v1.md`](results/engine-e2e-v1.md).
 
